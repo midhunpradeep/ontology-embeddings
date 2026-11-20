@@ -304,3 +304,48 @@ known masks, split manifests, component IDs/order/categories/original-pixel geom
 component annotation references, all 34 asset checksums, and dataset IDs. The outputs are
 `artifacts/datasets/issue2-cwd-api-d609cfe-a` and `artifacts/datasets/issue2-cwd-api-d609cfe-b`;
 the wheel and outputs are ignored local artifacts, not committed and **not remotely retrievable**.
+
+### Source semantic-compatibility checks (issue #3)
+
+The focused regression module `tests/test_dataset_source_compatibility.py` binds the committed
+fixture to independent source references from `town_model` `main` at
+`1788acfc65eb1038fe9e4c595cab6ef0f25407fd`. It checks SHA-256 over the actual fixture files
+`manifest.json`, `samples.jsonl`, both vocabulary manifests, and all three split manifests. The
+pinned source SHA-256 for `splits/test.json` is
+`8846960a889cd2471f87ce390ed88d9d49eaabafd133023197e9cc186bbfa606`. The same test exercises the
+public loader and validator against the committed fixture, checks all 66 canonical class names,
+IRIs, IDs and supervision statuses (60 trainable, fixed-positive `DomainThing` at ID 9, and five
+unsupported classes), and compares generated class/detector vocabularies to the hashed source
+vocabulary files. It checks the separate 22-entry detector-category namespace, the exact 16 sample
+IDs in each source split, representative pizza/component positive, known-negative, and unknown
+masks, and the three `img_00003` AnchovyTopping occurrence IDs with literal original-pixel xyxy
+coordinates. Tests do not access the archived source checkout or the network.
+
+The archived source checkout was independently verified clean at the exact source SHA above. A
+read-only recursive comparison of its `examples/pizza-48` against the migrated fixture found no
+file or byte differences (204 files). The source fixture validates through the public API with 48
+records, 803 component occurrences, 16 samples per partition, and zero validation errors; its
+178 support warnings are expected low-support diagnostics, not integrity failures.
+
+Deterministic pinned-generator parity is a local smoke rather than a CI test because retrieving
+and executing the upstream source may require the local source cache/network. The prior
+source-versus-migrated 6-sample run used the same configuration and seeds; dataset ID
+`pizza-12f170a153661557c94f`, semantic records, split manifests, configuration, ontology, and all
+34 immutable-asset checksum entries matched. Two additional clean non-editable-wheel direct API
+runs on code commit `d609cfe887e3e047d98670faf66027e34db27b70` reproduced that ID and record/split/
+component semantics; the exact commands, seeds, split IDs, and validation report IDs are recorded
+above. These runs used generator commit `6c0bcb221a957c184012beaf103bebcde4b1f793`, completed with
+zero validation errors, and emitted 72 component occurrences per six-record dataset. Generated
+outputs and wheel installs remain ignored local artifacts, not committed or remotely retrievable;
+these local-only runs are not CI evidence and are not claimed to be independently reproducible
+from this repository alone.
+
+Focused compatibility checks are run with:
+
+```sh
+./.venv/bin/python -m pytest -q tests/test_dataset_source_compatibility.py
+```
+
+The network-free regression suite intentionally validates pinned generated data and semantic
+projections without starting another generator download or treating test-partition labels as
+model feedback.
