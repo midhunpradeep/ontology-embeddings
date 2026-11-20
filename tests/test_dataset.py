@@ -11,7 +11,7 @@ from conftest import fake_generate_raw_dataset
 from ontology_embeddings.config import DatasetConfig
 from ontology_embeddings.dataset.constants import FIXED_POSITIVE_CLASS, UNSUPPORTED_CLASS_NAMES
 from ontology_embeddings.dataset.ontology import build_class_vocabulary
-from ontology_embeddings.dataset.preparation import prepare_dataset
+from ontology_embeddings.dataset.preparation import prepare_dataset, validate_output_path
 from ontology_embeddings.dataset.schema import load_records, write_records
 from ontology_embeddings.dataset.validation import (
     canonical_json_bytes,
@@ -334,6 +334,54 @@ def test_class_support_reports_known_positives_negatives_unknowns_by_level_and_s
     unsupported = next(item for item in split["classes"] if item["name"] in UNSUPPORTED_CLASS_NAMES)
     assert unsupported["pizza"]["unknown"] == split["pizza_instances"]
     assert unsupported["component"]["unknown"] == split["component_instances"]
+
+
+def test_prepare_dataset_defaults_project_root_to_current_directory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    small_config: DatasetConfig,
+) -> None:
+    from ontology_embeddings.dataset import preparation
+
+    project_root = tmp_path / "caller-project"
+    project_root.mkdir()
+    monkeypatch.chdir(project_root)
+    observed_roots: list[Path] = []
+
+    def generate_with_root(dataset_dir, config, *, project_root, source_repo=None, progress=None):
+        observed_roots.append(project_root)
+        return fake_generate_raw_dataset(
+            dataset_dir,
+            config,
+            project_root=project_root,
+            source_repo=source_repo,
+            progress=progress,
+        )
+
+    monkeypatch.setattr(preparation, "generate_raw_dataset", generate_with_root)
+    output = Path("artifacts/datasets/default-root")
+
+    prepared = prepare_dataset(small_config, output)
+
+    assert prepared == project_root.resolve() / output
+    assert prepared.is_dir()
+    assert observed_roots == [project_root.resolve()]
+
+
+def test_validate_output_path_defaults_to_current_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project_root = tmp_path / "caller-project"
+    project_root.mkdir()
+    monkeypatch.chdir(project_root)
+
+    with pytest.raises(ValueError, match="source-code tree"):
+        validate_output_path(Path("src/generated-dataset"))
+
+    explicit_root = tmp_path / "explicit-project"
+    explicit_root.mkdir()
+    with pytest.raises(ValueError, match="source-code tree"):
+        validate_output_path(explicit_root / "src/generated-dataset", project_root=explicit_root)
 
 
 def test_repeated_generation_has_identical_ids_and_type_stratified_splits(

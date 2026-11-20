@@ -415,7 +415,7 @@ def _dataset_root_allowed(destination: Path, project_root: Path) -> None:
 def validate_output_path(output_path: Path, *, project_root: Path | None = None) -> Path:
     """Resolve and validate a new output location without creating data."""
 
-    root = (project_root or Path(__file__).resolve().parents[3]).expanduser().resolve()
+    root = (project_root if project_root is not None else Path.cwd()).expanduser().resolve()
     destination = output_path.expanduser().resolve()
     _dataset_root_allowed(destination, root)
     if destination.exists():
@@ -442,8 +442,7 @@ def prepare_dataset(
 
     config.validate(require_total=True)
     requested_counts = config.allocate_type_counts()
-    root = project_root or Path(__file__).resolve().parents[3]
-    root = root.expanduser().resolve()
+    root = (project_root if project_root is not None else Path.cwd()).expanduser().resolve()
     destination = validate_output_path(output_path, project_root=root)
     destination.parent.mkdir(parents=True, exist_ok=True)
 
