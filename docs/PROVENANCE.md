@@ -45,7 +45,7 @@ adapted only for the new package namespace and repository layout, as detailed be
 | `tests/test_labels.py` | `tests/test_labels.py` | Source-label predicate tests |
 | `tests/test_ontology.py` | `tests/test_ontology.py` | Vocabulary and component target tests |
 | `tests/test_phase3_dataset.py` | `tests/test_image_dataset.py` | Loader/subset/target-projection tests (renamed to remove phase history) |
-| `tests/test_phase3_d5a_ontology_entailments.py` | `tests/test_ontology_entailments.py` | Narrow entailment and IRI-resolution tests (renamed) |
+| `tests/test_phase3_d5a_ontology_entailments.py` | `tests/test_ontology_entailments.py` | Dataset target-expansion and named-IRI resolution tests (renamed) |
 
 The test package paths were rewritten from `town_model` to `ontology_embeddings`. The fixture
 file set and bytes are checked against the pinned source fixture; the fixture manifest and its
@@ -80,7 +80,8 @@ learning dataset.
   code. Pytest and Ruff remain development dependencies. Torch, torchvision, Streamlit, and the
   old dashboard/model backend dependencies were not carried over.
 - The generation cache is under ignored `artifacts/sources/`; generated datasets are under
-  ignored `artifacts/datasets/`. The committed `examples/pizza-48` fixture is outside those rules.
+  ignored `artifacts/datasets/`. The CLI uses the invoking project directory as the root for both
+  conventions. The committed `examples/pizza-48` fixture is outside those rules.
 
 ## Third-party attribution and terms
 
@@ -99,49 +100,45 @@ publishes material elsewhere.
 
 ## Validation evidence
 
-- Installed the package and test/lint tools with
-  `./.venv/bin/python -m pip install -e '.[dev]'`.
-- `./.venv/bin/python -m pytest -q` completed with **93 passed**; `./.venv/bin/ruff check .`
-  completed with **All checks passed**.
-- `./.venv/bin/python -m pip wheel --no-deps . --wheel-dir build/wheels` passed, building
-  `build/wheels/ontology_embeddings-0.1.0-py3-none-any.whl` (SHA-256
-  `f770c76bb3b4a4036148feca700a991b232b1f2f28775c11fc32ed245e8c5b32`). The wheel was installed
-  with `./.venv/bin/python -m pip install --no-deps --upgrade --target build/wheel-install
-  build/wheels/ontology_embeddings-0.1.0-py3-none-any.whl`. A process importing from that wheel
-  loaded its packaged ontology,
-  validated/loaded all 48 fixture records, and had neither `town_model` nor `torch` in
-  `sys.modules`.
-- `./.venv/bin/oe-dataset validate examples/pizza-48 --no-write-report --json` passed: dataset
-  `pizza-dcc148789aecf8af86a3`, 48 records, split sizes 16/16/16, zero errors.
-- Real generation used the upstream repository at `6c0bcb221a957c184012beaf103bebcde4b1f793`
-  and this exact command twice (distinct output paths):
+- The remediation code is commit `891923003984d5635c4868e5907f64094cce0f9c` on
+  `thesis/pr1-dataset-migration`. `./.venv/bin/python -m pip install -e '.[dev]'` completed;
+  `./.venv/bin/python -m pytest -q` reported **88 passed** (relation-query-only tests were removed
+  as out of scope); `./.venv/bin/ruff check .` reported **All checks passed**; and
+  `./.venv/bin/python -m pip check` reported **No broken requirements found**.
+- `./.venv/bin/python -m pip wheel --no-deps . --wheel-dir build/remediation-wheels` built
+  `ontology_embeddings-0.1.0-py3-none-any.whl` (SHA-256
+  `8626cb3a99296c430a0b2e0d4f133fcb5c1d6c8715ed4d64fa0706af63482d0e`). The wheel was installed
+  non-editably with `./.venv/bin/python -m pip install --no-deps --target
+  build/remediation-wheel-install build/remediation-wheels/ontology_embeddings-0.1.0-py3-none-any.whl`;
+  an import resolved to `build/remediation-wheel-install/ontology_embeddings/__init__.py`.
+- From the repository root, the wheel-installed `oe-dataset` command validated
+  `examples/pizza-48`: dataset `pizza-dcc148789aecf8af86a3`, 48 records, 16/16/16 split sizes,
+  zero errors and 178 support warnings. The archived fixture remains unchanged; its 204 files previously matched the
+  pinned source fixture byte-for-byte.
+- Two actual pinned-generator runs used the source at
+  `6c0bcb221a957c184012beaf103bebcde4b1f793`, the non-editable wheel above, and the exact code
+  commit above. Both manifests record that full `preparation_commit` and
+  `preparation_dirty: false`. Commands (different output directories):
 
   ```text
-  ./.venv/bin/oe-dataset generate --config dataset.toml --output artifacts/datasets/issue2-real-final-a --total-instances 6 --pizza-types American random --type-counts '{"American": 3, "random": 3}' --generation-seed 31415 --split-seed 27182
-  ./.venv/bin/oe-dataset generate --config dataset.toml --output artifacts/datasets/issue2-real-final-b --total-instances 6 --pizza-types American random --type-counts '{"American": 3, "random": 3}' --generation-seed 31415 --split-seed 27182
+  PYTHONPATH="$PWD/build/remediation-wheel-install" ./.venv/bin/oe-dataset generate --config dataset.toml --output artifacts/datasets/issue2-remediation-891923-a --source-repo artifacts/sources/pizzaiolo --total-instances 6 --pizza-types American random --type-counts '{"American": 3, "random": 3}' --generation-seed 31415 --split-seed 27182
+  PYTHONPATH="$PWD/build/remediation-wheel-install" ./.venv/bin/oe-dataset generate --config dataset.toml --output artifacts/datasets/issue2-remediation-891923-b --source-repo artifacts/sources/pizzaiolo --total-instances 6 --pizza-types American random --type-counts '{"American": 3, "random": 3}' --generation-seed 31415 --split-seed 27182
   ```
 
-  Both runs validated and produced dataset ID `pizza-12f170a153661557c94f`, six samples, and 72
-  component occurrences. Record objects were equal across runs, covering source-inferred labels,
-  pizza/component targets and masks, split identities, component order/IDs, original-pixel xyxy
-  boxes, and annotation references. The full immutable-asset checksum maps were equal. Split IDs
-  were train `img_00000,img_00004`, validation `img_00001,img_00005`, and test
-  `img_00002,img_00003`. Both manifests record preparation source SHA
-  `12bcb929c500124f646c1702537f9bd64a0c85c3` with `preparation_dirty: true`; both share 34
-  immutable asset hashes. Validation report IDs are `214818a64e21a3bebe307c2880714daf858c1ac4cbc4ed354e5efdda7ec83eaf`
-  and `3f1e52cc15b322bb0242c5863be8928a8395ee83a78e3a7fe8ce589eeef6e5d4` for outputs `issue2-real-final-a`
-  and `issue2-real-final-b`. Full artifacts are under
-  `artifacts/datasets/issue2-real-final-a/` and `artifacts/datasets/issue2-real-final-b/` and are
-  intentionally ignored local generation artifacts, not committed.
-- The first real-generation attempt before dependency installation stopped at import with the
-  concrete environment error `ModuleNotFoundError: No module named 'matplotlib'`. Inspection of
-  the pinned upstream module confirmed its unconditional matplotlib and scikit-learn imports;
-  both were added as necessary generator dependencies, after which both real attempts passed.
-  An initial wheel command with `--no-build-isolation` also failed because setuptools was absent
-  from the venv; the standard build-isolation command above passed.
-- The 204 files under `examples/pizza-48/` were compared against the archived source fixture with
-  `diff -qr`; the trees matched with no differences. The archived source checkout still has the
-  pinned source commit and a clean worktree.
+  Both generated dataset ID `pizza-12f170a153661557c94f`, six samples, 72 component occurrences,
+  and the same 34-entry immutable-asset checksum map. Semantic record JSON and all split manifests
+  were equal. Split IDs were train `img_00000,img_00004`, validation `img_00001,img_00005`, and
+  test `img_00002,img_00003`. Wheel-based validation passed with zero errors and 281 low-support
+  warnings per run. Validation report IDs were
+  `870f7d1bb4bbdbaebcb096cb6b93fdd67c6335c2a91810aa02615be59fedf354` (`...-a`) and
+  `c438903574b8248c1b617375417650a0854bc39213e28b55dded6523e52d2505` (`...-b`).
+- A further wheel-installed CLI smoke from the repository root omitted `--source-repo`, so it used
+  the project's existing `artifacts/sources/pizzaiolo` cache and wrote the output under
+  `artifacts/datasets/issue2-remediation-891923-wheel-cache`; it produced the same dataset ID,
+  72 components, preparation SHA, and `preparation_dirty: false`, validated with zero errors, and
+  did not create a source cache inside the wheel installation. Its validation report ID was
+  `23243566377c334f565f451151f2380a7418c8d635f8e5d54d933bed58c4db68` (281 low-support warnings).
 
-The generated outputs are local artifacts, not committed fixture changes. No model or training
-experiment was run, and no test-set predictive feedback was used.
+All generation outputs above are ignored local artifacts, not committed and **not remotely
+retrievable**. No model or training experiment was run, and no test-set predictive feedback was
+used.
