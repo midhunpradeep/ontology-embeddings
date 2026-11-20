@@ -12,7 +12,10 @@ third-party source or asset, record at least:
   notices that must accompany the material;
 - modifications made during migration.
 
-Preserve required notices and license texts with the files they cover. The pinned
-`town_model` source has no top-level license file, so its code's reuse terms must not be
-inferred from the separate license declared by upstream Pizzaïolo. Escalate unclear rights
-before copying; record the resolution here or in a linked asset-specific notice.
+Preserve required notices and license texts with the files they cover. The migrated dataset code
+comes from the pinned `town_model` source, which has no top-level license file; its code's reuse
+terms must not be inferred from the separate license declared by upstream Pizzaïolo. The
+source/asset boundaries and preserved CC BY-NC 4.0 attribution are recorded in
+[`../PROVENANCE.md`](../PROVENANCE.md) and [`UPSTREAM_PIZZAIOLO.md`](UPSTREAM_PIZZAIOLO.md).
+No repository-wide license is implied. Resolve source-code reuse rights with the rights holder
+before any publication or redistribution.

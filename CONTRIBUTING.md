@@ -24,5 +24,6 @@ ruff check .
 ```
 
 Keep generated datasets, runs, checkpoints, caches, and temporary outputs in the ignored
-`artifacts/` locations documented in the README. Keep small deterministic test fixtures in
-tracked test-source directories instead.
+`artifacts/` locations documented in the README. Keep test fixtures under tracked test paths and
+committed prepared dataset examples under tracked `examples/`; neither belongs in generated-output
+locations.

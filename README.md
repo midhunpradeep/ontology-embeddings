@@ -4,38 +4,55 @@ A small, installable research package for ontology-aware multi-label learning.
 
 ## Current scope
 
-This repository is being rebuilt in staged, reviewed increments. The current bootstrap
-provides Python packaging, contributor tooling, a minimal importable package, tests, and CI.
-It does **not yet contain the migrated dataset subsystem or a learning model**. Dataset
-migration is a separate deliverable; model implementation is explicitly deferred to a later
-milestone and authorization.
+This repository contains the migrated Pizzaïolo dataset subsystem: pinned generator adapter,
+preparation, ontology/vocabulary and source-label inference, prepared records, deterministic
+type-stratified splits, integrity validation, statistics, and dataset loading/subsets. It does
+not contain or implement any affine, Box, Town, CNN, training, experiment-logging, dashboard,
+or visualization subsystem.
 
-The eventual research compares ontology-aware representations. Planned evidence is staged:
-metadata-oracle learning is infrastructure evidence, controlled geometric tasks address
-representational behavior, and image-derived inputs are needed for claims about visual learning.
-This bootstrap supports none of those claims. In particular, it contains no affine, Box, Town,
-CNN, or visualization implementation and reports no model results.
+The prepared schema preserves unknown-label masks, source audit metadata, component occurrence
+IDs, and original-pixel annotation geometry. Synthetic absences are known negatives only under
+the pinned generator's prepared-data contract; they are not a general closed-world interpretation
+of OWL.
 
-## Install
+## Install and validate the fixture
 
 Requires Python 3.11 or 3.12.
 
 ```bash
-python -m pip install .
+python -m pip install ".[dev]"
+oe-dataset validate examples/pizza-48 --no-write-report
 ```
 
-For editable development with tests and linting, see [Contributing](CONTRIBUTING.md).
+The committed `examples/pizza-48` dataset is an unchanged 48-image prepared fixture for loading,
+validation, and smoke checks; it is not intended for learning claims. See
+[`docs/DATASET_SCHEMA.md`](docs/DATASET_SCHEMA.md) for the wire contract and
+[`docs/PROVENANCE.md`](docs/PROVENANCE.md) for migration and asset provenance.
+
+## Generate a dataset
+
+`dataset.toml` provides the default generation configuration. Generation uses the pinned
+Pizzaïolo commit and writes a new immutable dataset directory. The existing output path must not
+exist. The generator source is cloned into the ignored `artifacts/sources/pizzaiolo` cache unless
+an already-pinned, clean checkout is passed explicitly.
+
+```bash
+oe-dataset generate --config dataset.toml --output artifacts/datasets/pizza-run-01
+```
+
+Other data commands are `oe-dataset validate <dataset>` and `oe-dataset inspect <dataset>`.
 
 ## Generated outputs
 
-Use `artifacts/datasets/`, `artifacts/runs/`, `artifacts/checkpoints/`,
-`artifacts/cache/`, and `artifacts/tmp/` for local generated outputs; these locations are
-ignored by Git. Keep source files and small test fixtures in tracked source/test locations,
-not inside these generated-output directories.
+Use `artifacts/datasets/`, `artifacts/sources/`, `artifacts/runs/`, `artifacts/checkpoints/`,
+`artifacts/cache/`, and `artifacts/tmp/` for local generated outputs and source caches; these
+locations are ignored by Git. Keep source files and the prepared fixture in tracked package and
+example directories, not in generated-output locations.
 
 ## Provenance and licensing
 
-No dataset or third-party source files have been migrated in this bootstrap. The pinned source
-and the required provenance and license review process are recorded in
-[`docs/PROVENANCE.md`](docs/PROVENANCE.md) and [`docs/licenses/README.md`](docs/licenses/README.md).
-No repository-wide license has been selected; do not infer one for future migrated material.
+The pinned `town_model` source checkout has no top-level project license. No repository-wide
+license is selected or inferred here. The migrated upstream Pizzaïolo ontology/data assets have
+their separate CC BY-NC 4.0 attribution notice; that license does not cover the source project's
+own code. See [`docs/licenses/README.md`](docs/licenses/README.md) and
+[`docs/licenses/UPSTREAM_PIZZAIOLO.md`](docs/licenses/UPSTREAM_PIZZAIOLO.md).

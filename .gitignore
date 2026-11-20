@@ -20,8 +20,9 @@ htmlcov/
 .env.*
 !.env.example
 
-# Generated research outputs only. Keep source and test fixtures elsewhere
-# (for example under tests/fixtures/) so they remain visible to Git.
+# Generated research outputs and pinned upstream source cache only. Keep
+# package assets and prepared source fixtures in tracked directories.
+/artifacts/sources/
 /artifacts/datasets/
 /artifacts/runs/
 /artifacts/checkpoints/
