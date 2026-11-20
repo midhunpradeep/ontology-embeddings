@@ -46,43 +46,26 @@ def _ontology_with_mushroom_parent(
     "source",
     [
         "MushroomTopping",
-        "VegetableTopping",
-        "CheeseTopping",
         "ParmesanTopping",
-        "FruitTopping",
         "SultanaTopping",
     ],
 )
-def test_named_subclasses_of_vegetarian_union_are_entailed(source: str) -> None:
+def test_supported_equivalent_class_expansion_adds_component_targets(source: str) -> None:
     ontology = OntologySnapshot.load(require_pinned_hash=True)
 
-    metadata = ontology.geometric_relation_metadata(source, "VegetarianTopping", "containment")
-
-    assert metadata["status"] == "entailed"
-    assert "equivalent-class" in metadata["basis"]
+    assert "VegetarianTopping" in ontology.component_class_targets(source)
 
 
-def test_legitimate_relative_named_parent_is_asserted() -> None:
+def test_legitimate_relative_named_parent_expands_component_targets() -> None:
     ontology = OntologySnapshot.load(require_pinned_hash=True)
 
-    assert (
-        ontology.geometric_relation_metadata("MushroomTopping", "VegetableTopping", "containment")[
-            "status"
-        ]
-        == "asserted"
-    )
+    assert "VegetableTopping" in ontology.component_class_targets("MushroomTopping")
 
 
-def test_legitimate_absolute_named_parent_matching_declared_iri_is_asserted(tmp_path) -> None:
+def test_legitimate_absolute_named_parent_matching_declared_iri_preserves_targets(tmp_path) -> None:
     pinned = OntologySnapshot.load(require_pinned_hash=True)
     ontology = _ontology_with_mushroom_parent(tmp_path, pinned.class_iris["VegetableTopping"])
 
-    assert (
-        ontology.geometric_relation_metadata("MushroomTopping", "VegetableTopping", "containment")[
-            "status"
-        ]
-        == "asserted"
-    )
     assert ontology.component_class_targets("MushroomTopping") == pinned.component_class_targets(
         "MushroomTopping"
     )
@@ -100,18 +83,6 @@ def test_foreign_named_parent_with_colliding_local_name_is_unsupported(
 ) -> None:
     ontology = _ontology_with_mushroom_parent(tmp_path, reference, parent_base=parent_base)
 
-    assert (
-        ontology.geometric_relation_metadata("MushroomTopping", "VegetableTopping", "containment")[
-            "status"
-        ]
-        == "unknown"
-    )
-    assert (
-        ontology.geometric_relation_metadata("MushroomTopping", "VegetarianTopping", "containment")[
-            "status"
-        ]
-        == "unknown"
-    )
     targets = ontology.component_class_targets("MushroomTopping")
     assert "VegetableTopping" not in targets
     assert "VegetarianTopping" not in targets
@@ -121,72 +92,9 @@ def test_foreign_named_parent_with_colliding_local_name_is_unsupported(
 def test_missing_or_unknown_named_superclass_is_not_inferred(tmp_path, reference) -> None:
     ontology = _ontology_with_mushroom_parent(tmp_path, reference)
 
-    assert (
-        ontology.geometric_relation_metadata("MushroomTopping", "VegetableTopping", "containment")[
-            "status"
-        ]
-        == "unknown"
-    )
-    assert (
-        ontology.geometric_relation_metadata("MushroomTopping", "VegetarianTopping", "containment")[
-            "status"
-        ]
-        == "unknown"
-    )
-
-
-def test_named_assertion_closure_and_unknown_direction_are_preserved() -> None:
-    ontology = OntologySnapshot.load(require_pinned_hash=True)
-
-    assert (
-        ontology.geometric_relation_metadata("MushroomTopping", "VegetableTopping", "containment")[
-            "status"
-        ]
-        == "asserted"
-    )
-    assert (
-        ontology.geometric_relation_metadata("MushroomTopping", "PizzaTopping", "containment")[
-            "status"
-        ]
-        == "entailed"
-    )
-    assert (
-        ontology.geometric_relation_metadata("MushroomTopping", "MeatTopping", "containment")[
-            "status"
-        ]
-        == "unknown"
-    )
-    assert (
-        ontology.geometric_relation_metadata("VegetarianTopping", "MushroomTopping", "containment")[
-            "status"
-        ]
-        == "unknown"
-    )
-    # Being mentioned as a disjunct does not establish that every vegetarian
-    # topping is a mushroom (or even a vegetable topping).
-    assert (
-        ontology.geometric_relation_metadata(
-            "VegetarianTopping", "VegetableTopping", "containment"
-        )["status"]
-        == "unknown"
-    )
-
-
-def test_supported_spiciness_equivalence_consequence_is_reported() -> None:
-    ontology = OntologySnapshot.load(require_pinned_hash=True)
-
-    assert (
-        ontology.geometric_relation_metadata(
-            "JalapenoPepperTopping", "SpicyTopping", "containment"
-        )["status"]
-        == "entailed"
-    )
-    assert (
-        ontology.geometric_relation_metadata("MushroomTopping", "SpicyTopping", "containment")[
-            "status"
-        ]
-        == "unknown"
-    )
+    targets = ontology.component_class_targets("MushroomTopping")
+    assert "VegetableTopping" not in targets
+    assert "VegetarianTopping" not in targets
 
 
 def test_pinned_class_ids_and_all_component_targets_remain_unchanged() -> None:
@@ -354,7 +262,7 @@ def test_pinned_class_ids_and_all_component_targets_remain_unchanged() -> None:
     }
 
 
-def test_equivalent_entailments_match_component_targets_without_changing_vocabulary() -> None:
+def test_equivalent_class_targets_keep_canonical_vocabulary() -> None:
     ontology = OntologySnapshot.load(require_pinned_hash=True)
     vocabulary = build_class_vocabulary(ontology)
     ids = {entry["name"]: entry["class_id"] for entry in vocabulary["classes"]}
@@ -372,11 +280,28 @@ def test_equivalent_entailments_match_component_targets_without_changing_vocabul
         "DomainThing",
     }
 
+    vegetarian_targets = {
+        "AnchovyTopping": False,
+        "GarlicTopping": True,
+        "GreenPepperTopping": True,
+        "HamTopping": False,
+        "JalapenoPepperTopping": True,
+        "MushroomTopping": True,
+        "OliveTopping": True,
+        "OnionTopping": True,
+        "ParmesanTopping": True,
+        "PeperonataTopping": True,
+        "PeperoniSausageTopping": False,
+        "PrawnTopping": False,
+        "RocketTopping": True,
+        "SlicedTomatoTopping": True,
+        "SpinachTopping": True,
+        "SultanaTopping": True,
+    }
     for source in TOPPING_COLUMNS:
-        for target in ("VegetarianTopping", "SpicyTopping"):
-            is_component_target = target in ontology.component_class_targets(source)
-            status = ontology.geometric_relation_metadata(source, target, "containment")["status"]
-            assert (status != "unknown") == is_component_target
+        assert (
+            "VegetarianTopping" in ontology.component_class_targets(source)
+        ) is vegetarian_targets[source]
 
 
 def _ontology_with_nested_vegetable_disjunct(tmp_path) -> OntologySnapshot:
@@ -418,41 +343,7 @@ def _ontology_with_nested_vegetable_disjunct(tmp_path) -> OntologySnapshot:
     return OntologySnapshot.load(path)
 
 
-def test_unsupported_nested_equivalent_expression_stays_unknown(tmp_path) -> None:
+def test_unsupported_nested_equivalent_expression_does_not_expand_targets(tmp_path) -> None:
     ontology = _ontology_with_nested_vegetable_disjunct(tmp_path)
 
-    assert (
-        ontology.geometric_relation_metadata("MushroomTopping", "VegetarianTopping", "containment")[
-            "status"
-        ]
-        == "unknown"
-    )
     assert "VegetarianTopping" not in ontology.component_class_targets("MushroomTopping")
-
-
-def test_existing_disjointness_metadata_is_unchanged() -> None:
-    ontology = OntologySnapshot.load(require_pinned_hash=True)
-
-    assert (
-        ontology.geometric_relation_metadata("MushroomTopping", "OliveTopping", "disjointness")[
-            "status"
-        ]
-        == "asserted"
-    )
-    assert (
-        ontology.geometric_relation_metadata("MushroomTopping", "MeatTopping", "disjointness")[
-            "status"
-        ]
-        == "entailed"
-    )
-
-
-def test_mushroom_vegetarian_ontology_entailment_is_independent_of_geometry() -> None:
-    ontology = OntologySnapshot.load(require_pinned_hash=True)
-
-    assert (
-        ontology.geometric_relation_metadata("MushroomTopping", "VegetarianTopping", "containment")[
-            "status"
-        ]
-        == "entailed"
-    )

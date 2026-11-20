@@ -31,10 +31,12 @@ validation, and smoke checks; it is not intended for learning claims. See
 
 ## Generate a dataset
 
-`dataset.toml` provides the default generation configuration. Generation uses the pinned
-Pizzaïolo commit and writes a new immutable dataset directory. The existing output path must not
-exist. The generator source is cloned into the ignored `artifacts/sources/pizzaiolo` cache unless
-an already-pinned, clean checkout is passed explicitly.
+`dataset.toml` provides the default generation configuration. Run generation from the project
+directory: configuration and output paths are relative to the current working directory, and the
+pinned-source cache is stored under that project root. Generation uses the pinned Pizzaïolo commit
+and writes a new immutable dataset directory. The existing output path must not exist. The
+generator source is cloned into the ignored `artifacts/sources/pizzaiolo` cache unless an
+already-pinned, clean checkout is passed explicitly.
 
 ```bash
 oe-dataset generate --config dataset.toml --output artifacts/datasets/pizza-run-01

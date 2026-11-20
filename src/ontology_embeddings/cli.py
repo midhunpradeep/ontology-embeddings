@@ -74,7 +74,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             print("Resolved generation settings:")
             print(json.dumps(config.resolved_dict(), indent=2, sort_keys=True))
-            root = Path(__file__).resolve().parents[2]
+            root = Path.cwd().resolve()
             output = prepare_dataset(
                 config,
                 args.output,
