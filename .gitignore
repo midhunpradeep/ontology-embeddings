@@ -1,0 +1,30 @@
+# Python environments, bytecode, and test/tool caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.cache/
+
+# Build and coverage outputs
+*.egg-info/
+build/
+dist/
+.coverage
+htmlcov/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Generated research outputs only. Keep source and test fixtures elsewhere
+# (for example under tests/fixtures/) so they remain visible to Git.
+/artifacts/datasets/
+/artifacts/runs/
+/artifacts/checkpoints/
+/artifacts/cache/
+/artifacts/tmp/
+/tmp/
