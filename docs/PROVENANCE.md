@@ -142,3 +142,165 @@ publishes material elsewhere.
 All generation outputs above are ignored local artifacts, not committed and **not remotely
 retrievable**. No model or training experiment was run, and no test-set predictive feedback was
 used.
+
+### Direct-API non-editable-wheel follow-up
+
+After committing the cwd-default fix and tests, code commit
+`d609cfe887e3e047d98670faf66027e34db27b70` was clean. A non-editable wheel was built from that
+commit and installed into an isolated target directory. Wheel SHA-256:
+`c60d90cec7f32b41c9925a1fe62d91e24b40e776eaa99c6c9ef6cc4b1d109455`. The following direct
+Python API invocation intentionally omitted both `project_root` and `source_repo`; the imported
+module came from the installed wheel, while the pinned source cache and outputs resolved under the
+calling project directory, not the wheel installation:
+
+```sh
+./.venv/bin/python -m pip wheel --no-deps . --wheel-dir build/issue2-cwd-fix-wheels
+./.venv/bin/python -m pip install --no-deps --target build/issue2-cwd-fix-wheel-install build/issue2-cwd-fix-wheels/ontology_embeddings-0.1.0-py3-none-any.whl
+PYTHONPATH="$PWD/build/issue2-cwd-fix-wheel-install" ./.venv/bin/python - <<'PY'
+import json
+from pathlib import Path
+
+import ontology_embeddings
+from ontology_embeddings.config import DatasetConfig
+from ontology_embeddings.dataset.preparation import prepare_dataset
+from ontology_embeddings.dataset.schema import load_records
+from ontology_embeddings.dataset.validation import validate_dataset
+
+CODE_SHA = "d609cfe887e3e047d98670faf66027e34db27b70"
+ROOT = Path.cwd().resolve()
+WHEEL_SITE = ROOT / "build/issue2-cwd-fix-wheel-install"
+assert WHEEL_SITE in Path(ontology_embeddings.__file__).resolve().parents
+source_cache = ROOT / "artifacts/sources/pizzaiolo"
+assert source_cache.is_dir()
+config = DatasetConfig(
+    total_instances=6,
+    pizza_types=("American", "random"),
+    type_counts={"American": 3, "random": 3},
+    generation_seed=31415,
+    split_seed=27182,
+)
+
+runs = []
+for suffix in ("a", "b"):
+    output = ROOT / f"artifacts/datasets/issue2-cwd-api-{CODE_SHA[:7]}-{suffix}"
+    # Intentionally omit project_root and source_repo to exercise cwd defaults and cwd cache.
+    prepared = prepare_dataset(config, output)
+    assert prepared == output and ROOT in prepared.parents
+    manifest = json.loads((prepared / "manifest.json").read_text())
+    records = load_records(prepared / "samples.jsonl")
+    report = validate_dataset(prepared, write_report=False)
+    assert manifest["source"]["preparation_commit"] == CODE_SHA
+    assert manifest["source"]["preparation_dirty"] is False
+    assert manifest["source"]["generator_commit"] == "6c0bcb221a957c184012beaf103bebcde4b1f793"
+    assert report.valid
+    report_json = json.loads((prepared / "reports/validation.json").read_text())
+    splits = {
+        name: json.loads((prepared / "splits" / f"{name}.json").read_text())["sample_ids"]
+        for name in ("train", "validation", "test")
+    }
+    runs.append(
+        {
+            "output": prepared,
+            "manifest": manifest,
+            "records": [record.to_dict() for record in records],
+            "report": report_json,
+            "splits": splits,
+            "component_count": sum(len(record.components) for record in records),
+        }
+    )
+
+first, second = runs
+first_records, second_records = first["records"], second["records"]
+checks = {
+    "records": first_records == second_records,
+    "labels_targets_masks": all(
+        a["pizza"] == b["pizza"]
+        and [
+            (item["ontology_targets"], item["ontology_known_mask"])
+            for item in a["components"]
+        ]
+        == [
+            (item["ontology_targets"], item["ontology_known_mask"])
+            for item in b["components"]
+        ]
+        for a, b in zip(first_records, second_records, strict=True)
+    ),
+    "splits": first["splits"] == second["splits"],
+    "component_ids_order_geometry": all(
+        [
+            (
+                item["component_id"],
+                item["detector_category_id"],
+                item["detector_category"],
+                item["bbox_xyxy_original"],
+            )
+            for item in a["components"]
+        ]
+        == [
+            (
+                item["component_id"],
+                item["detector_category_id"],
+                item["detector_category"],
+                item["bbox_xyxy_original"],
+            )
+            for item in b["components"]
+        ]
+        for a, b in zip(first_records, second_records, strict=True)
+    ),
+    "annotation_refs": all(
+        a["source_annotations"] == b["source_annotations"]
+        and [item["annotation_path"] for item in a["components"]]
+        == [item["annotation_path"] for item in b["components"]]
+        for a, b in zip(first_records, second_records, strict=True)
+    ),
+    "asset_checksums": first["manifest"]["asset_checksums"]
+    == second["manifest"]["asset_checksums"],
+    "dataset_ids": first["manifest"]["dataset_id"] == second["manifest"]["dataset_id"],
+}
+assert all(checks.values()), checks
+assert first["component_count"] == second["component_count"] == 72
+assert not (WHEEL_SITE / "artifacts/sources/pizzaiolo").exists()
+print(
+    json.dumps(
+        {
+            "module": str(Path(ontology_embeddings.__file__).resolve()),
+            "cwd": str(ROOT),
+            "source_cache": str(source_cache.resolve()),
+            "wheel_site_has_source_cache": False,
+            "code_sha": CODE_SHA,
+            "preparation_dirty": [run["manifest"]["source"]["preparation_dirty"] for run in runs],
+            "dataset_ids": [run["manifest"]["dataset_id"] for run in runs],
+            "validation_report_ids": [run["report"].get("report_id") for run in runs],
+            "split_ids": first["splits"],
+            "component_count": first["component_count"],
+            "asset_checksum_count": len(first["manifest"]["asset_checksums"]),
+            "validation": [
+                {
+                    "valid": run["report"]["valid"],
+                    "errors": run["report"]["error_count"],
+                    "warnings": run["report"]["warning_count"],
+                }
+                for run in runs
+            ],
+            "equality": checks,
+            "outputs": [str(run["output"].relative_to(ROOT)) for run in runs],
+        },
+        indent=2,
+        sort_keys=True,
+    )
+)
+PY
+```
+
+Both runs recorded code SHA `d609cfe887e3e047d98670faf66027e34db27b70`,
+`preparation_dirty: false`, and generator SHA `6c0bcb221a957c184012beaf103bebcde4b1f793`.
+They produced dataset ID `pizza-12f170a153661557c94f` and **72 component occurrences** each.
+Validation passed with zero errors (281 low-support warnings per run). Validation report IDs:
+`f65a3dc4ab1f1bcf27bcee1cd7efc1adcd102891e24f7ae3e74353b20f297aca` (`...-a`) and
+`dbfde5a22b2897be1e3113246d1d6b145fc6da8f2ce47c4d2b3279748d6fa541` (`...-b`). Splits were
+train `img_00000,img_00004`, validation `img_00001,img_00005`, and test
+`img_00002,img_00003`. Equality checks passed for full records, pizza/component labels/targets/
+known masks, split manifests, component IDs/order/categories/original-pixel geometry, source and
+component annotation references, all 34 asset checksums, and dataset IDs. The outputs are
+`artifacts/datasets/issue2-cwd-api-d609cfe-a` and `artifacts/datasets/issue2-cwd-api-d609cfe-b`;
+the wheel and outputs are ignored local artifacts, not committed and **not remotely retrievable**.
