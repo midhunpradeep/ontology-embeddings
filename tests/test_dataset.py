@@ -655,6 +655,33 @@ def test_unlisted_immutable_asset_is_rejected_with_coherent_manifest_ids(
     )
 
 
+@pytest.mark.parametrize("asset_checksums_state", ["missing", "non_object"])
+def test_invalid_asset_checksums_manifest_fails_asset_check(
+    prepared_dataset: Path, asset_checksums_state: str
+) -> None:
+    manifest_path = prepared_dataset / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if asset_checksums_state == "missing":
+        del manifest["asset_checksums"]
+    else:
+        manifest["asset_checksums"] = []
+    manifest["manifest_id"] = hashlib.sha256(
+        canonical_json_bytes(
+            {key: value for key, value in manifest.items() if key != "manifest_id"}
+        )
+    ).hexdigest()
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    report = validate_dataset(prepared_dataset, write_report=False)
+
+    assert not report.valid
+    assert report.checks["asset_checksums"] is False
+    assert any(item.code == "asset_manifest" for item in report.errors)
+
+
 def test_germany_detector_identity_is_rejected(prepared_dataset: Path) -> None:
     def change(record: dict) -> None:
         record["components"][0]["detector_category"] = "Germany"

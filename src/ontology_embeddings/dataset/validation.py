@@ -1692,6 +1692,7 @@ def validate_dataset(
                     "missing_asset",
                     "asset_checksum",
                     "asset_checksum_coverage",
+                    "asset_manifest",
                     "unsafe_asset_path",
                 }
                 for issue in errors
