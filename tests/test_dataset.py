@@ -618,6 +618,42 @@ def test_missing_annotation_reference_is_reported(prepared_dataset: Path) -> Non
     )
 
 
+def test_unlisted_immutable_asset_is_rejected_with_coherent_manifest_ids(
+    prepared_dataset: Path,
+) -> None:
+    relative_path = "images/img_00000.png"
+    manifest_path = prepared_dataset / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    del manifest["asset_checksums"][relative_path]
+    identity = {
+        "schema_version": manifest["schema_version"],
+        "resolved_config": manifest["resolved_config"],
+        "generator_commit": manifest["source"]["generator_commit"],
+        "ontology_sha256": manifest["ontology"]["sha256"],
+        "asset_checksums": manifest["asset_checksums"],
+    }
+    manifest["dataset_id"] = (
+        "pizza-" + hashlib.sha256(canonical_json_bytes(identity)).hexdigest()[:20]
+    )
+    manifest["manifest_id"] = hashlib.sha256(
+        canonical_json_bytes(
+            {key: value for key, value in manifest.items() if key != "manifest_id"}
+        )
+    ).hexdigest()
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    report = validate_dataset(prepared_dataset, write_report=False)
+
+    assert not report.valid
+    assert any(
+        item.code == "asset_checksum_coverage" and item.path == relative_path
+        for item in report.errors
+    )
+
+
 def test_germany_detector_identity_is_rejected(prepared_dataset: Path) -> None:
     def change(record: dict) -> None:
         record["components"][0]["detector_category"] = "Germany"

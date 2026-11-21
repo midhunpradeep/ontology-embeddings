@@ -421,6 +421,34 @@ def _validate_assets(root: Path, manifest: dict[str, Any], errors: list[Diagnost
             path=str(root / MANIFEST_FILENAME),
         )
         return
+    on_disk_assets: set[str] = set()
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(root).as_posix()
+        if (
+            relative == MANIFEST_FILENAME
+            or relative.startswith(f"{REPORT_DIR}/")
+            or relative.endswith(".tmp")
+        ):
+            continue
+        on_disk_assets.add(relative)
+
+    for relative in sorted(on_disk_assets - checksums.keys()):
+        _add_issue(
+            errors,
+            "asset_checksum_coverage",
+            f"Immutable dataset asset is missing from asset_checksums: {relative}",
+            path=relative,
+        )
+    for relative in sorted(checksums.keys() - on_disk_assets):
+        _add_issue(
+            errors,
+            "asset_checksum_coverage",
+            f"asset_checksums entry is not an immutable on-disk dataset asset: {relative}",
+            path=str(relative),
+        )
+
     for relative, expected_hash in checksums.items():
         try:
             asset = _safe_asset_path(root, str(relative))

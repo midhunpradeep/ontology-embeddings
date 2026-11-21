@@ -95,8 +95,23 @@ ontology/generated images and annotations; review upstream acknowledgements and 
 redistribution or commercial use. CC BY-NC 4.0 does not grant rights to the source project's
 own code.
 
-The new repository remains private. This migration changes neither repository visibility nor
-publishes material elsewhere.
+### Repository visibility incident
+
+The repository was created with `gh repo create --private` at 2026-11-20T10:20:59Z; the first
+`gh repo view`, at 10:21:16Z, reported PRIVATE. GitHub's Events feed records a `PublicEvent` at
+10:21:00Z. The 2026-11-20T12:11:13Z issue #4 comment noted that GitHub then reported PUBLIC;
+a direct query at 12:24:09Z confirmed PUBLIC. The coordinator patched visibility back to PRIVATE
+at 12:24:52Z and verified PRIVATE at 12:24:54Z. The full exposure interval is unknown; this record
+does not claim continuous visibility, no exposure, or zero access.
+
+The remote material during the observed public state included the initial README/main branch,
+issues and comments #1–#5, including #5's detailed PR 2 affine specification, explicitly blocked
+and not authorized for implementation. No PR 1 code branch or PR was remote. GitHub traffic
+endpoints queried at 12:29Z reported 0 views/unique views, 0 clones/unique cloners, and 0 forks;
+these metrics cannot establish that no one accessed or copied material. Current repository
+visibility is PRIVATE. Human assessment of this incident is required before merge; current
+visibility and traffic counts do not resolve that assessment. Issue #5 remains blocked and is not
+implementation authorization.
 
 ## Validation evidence
 

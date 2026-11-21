@@ -1,6 +1,6 @@
 # Prepared dataset wire schema (version 1.0.0)
 
-This is the public Phase 1 data contract. A dataset is usable with the Python standard library plus an image reader; loading samples does not import the generator, an OWL reasoner, PyTorch, Torchvision, or Streamlit. The machine-readable sample schema is [`schemas/sample-v1.schema.json`](../schemas/sample-v1.schema.json); cross-record, ontology, file-reference, and closed-world checks are enforced by the validator.
+This is the public Phase 1 data contract. JSON/JSONL record serialization and parsing use the Python standard library. However, importing `ontology_embeddings.dataset` also imports validation, which requires NumPy and Pillow; package import and full dataset validation therefore require the declared runtime dependencies. The dataset API does not import the generator, the upstream OWL reasoner, PyTorch, Torchvision, or Streamlit. The machine-readable sample schema is [`schemas/sample-v1.schema.json`](../schemas/sample-v1.schema.json); cross-record, ontology, file-reference, and closed-world checks are enforced by the validator.
 
 ## Files and serialization
 
