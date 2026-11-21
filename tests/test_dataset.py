@@ -648,6 +648,7 @@ def test_unlisted_immutable_asset_is_rejected_with_coherent_manifest_ids(
     report = validate_dataset(prepared_dataset, write_report=False)
 
     assert not report.valid
+    assert report.checks["asset_checksums"] is False
     assert any(
         item.code == "asset_checksum_coverage" and item.path == relative_path
         for item in report.errors

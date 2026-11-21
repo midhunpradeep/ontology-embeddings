@@ -1687,7 +1687,13 @@ def validate_dataset(
             "pinned_generator": source_info.get("generator_commit") == GENERATOR_COMMIT,
             "pinned_ontology": ontology_info.get("sha256") == ONTOLOGY_SHA256,
             "asset_checksums": not any(
-                issue.code in {"missing_asset", "asset_checksum", "unsafe_asset_path"}
+                issue.code
+                in {
+                    "missing_asset",
+                    "asset_checksum",
+                    "asset_checksum_coverage",
+                    "unsafe_asset_path",
+                }
                 for issue in errors
             ),
             "vocabulary": ontology is not None
