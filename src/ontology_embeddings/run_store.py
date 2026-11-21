@@ -95,8 +95,30 @@ class RunRecord:
             "python": sys.version,
             "platform": sys.platform,
         }
-        self._persist()
-        self._index()
+        try:
+            self._persist()
+            self._index()
+        except BaseException as original_error:
+            # The run directory/manifest exists even if initial registration fails.
+            # Persist its terminal state and retry indexing best-effort, while preserving
+            # the registration error as the exception observed by the caller.
+            import traceback
+
+            self.manifest.update(
+                status="failed",
+                finished_at=datetime.now(timezone.utc).isoformat(),
+                error=f"{type(original_error).__name__}: {original_error}",
+                traceback="".join(traceback.format_exception(original_error)),
+            )
+            try:
+                self._persist()
+            except BaseException:
+                pass
+            try:
+                self._index()
+            except BaseException:
+                pass
+            raise
 
     def _persist(self) -> None:
         _atomic_json(self.path / "manifest.json", self.manifest)

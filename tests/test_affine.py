@@ -20,7 +20,7 @@ from ontology_embeddings.features import (
 )
 from ontology_embeddings.model import AffineMultiLabelModel, masked_task_loss
 from ontology_embeddings.run_store import RunRecord, find_runs
-from ontology_embeddings.training import _pack, train
+from ontology_embeddings.training import _loss, _pack, train
 
 
 def record(*, topping_count: int = 1, category: str = "AnchovyTopping", sample: str = "train"):
@@ -202,6 +202,39 @@ def test_masked_nonfinite_logits_do_not_contaminate_eligible_loss_or_gradients()
     assert pizza.grad[0, 1] == 0
     assert torch.isfinite(component.grad[0, 0])
     assert component.grad[0, 1] == 0
+
+
+def test_initial_run_index_failure_is_recorded_failed_and_original_error_reraised(
+    tmp_path, monkeypatch
+):
+    dataset = SimpleNamespace(
+        dataset_id="initial-index-failure",
+        dataset_manifest_sha256="m",
+        class_manifest_sha256="c",
+        schema_version="v",
+        canonical_class_ids=(),
+        pizza_supervision_class_ids=(),
+        component_supervision_class_ids=(),
+    )
+    original_index = RunRecord._index
+    calls = 0
+
+    def fail_initial_index(self):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise OSError("injected initial index failure")
+        return original_index(self)
+
+    monkeypatch.setattr(RunRecord, "_index", fail_initial_index)
+    with pytest.raises(OSError, match="injected initial index failure"):
+        train(dataset, [], artifact_root=tmp_path, invocation="initial index failure")
+    entries = find_runs(tmp_path)
+    assert len(entries) == 1
+    assert entries[0]["status"] == "failed"
+    manifest = json.loads((tmp_path / entries[0]["run_id"] / "manifest.json").read_text())
+    assert manifest["status"] == "failed"
+    assert "injected initial index failure" in manifest["error"]
 
 
 def test_initial_run_update_failure_is_recorded_failed_and_original_error_reraised(
@@ -398,6 +431,56 @@ def test_tiny_linear_overfit_updates_both_adapters_and_shared_head(tmp_path):
         "component_adapter": True,
         "head": True,
     }
+
+
+def test_epoch_train_loss_reduces_over_full_partition_after_updates(tmp_path):
+    class_ids = (0,)
+    data = SimpleNamespace(
+        dataset_id="uneven-batch-loss",
+        dataset_manifest_sha256="synthetic",
+        class_manifest_sha256="classes",
+        schema_version="synthetic-v1",
+        canonical_class_ids=class_ids,
+        pizza_supervision_class_ids=(0,),
+        component_supervision_class_ids=(),
+    )
+    examples = []
+    for index, positive in enumerate((False, True, False)):
+        item = record(topping_count=index, sample=f"uneven-{index}")
+        targets = [0] * 66
+        known = [0] * 66
+        targets[0] = int(positive)
+        known[0] = 1
+        examples.append(replace(item, pizza_targets=tuple(targets), pizza_known_mask=tuple(known)))
+
+    result = train(
+        data,
+        examples,
+        (),
+        artifact_root=tmp_path,
+        epochs=1,
+        batch_size=2,
+        learning_rate=0.01,
+        seed=19,
+        purpose="smoke",
+        invocation="uneven-batch-loss-test",
+    )
+    assert len(examples) % 2 == 1
+    model = AffineMultiLabelModel(
+        len(PIZZA_FEATURE_NAMES), len(COMPONENT_FEATURE_NAMES), len(class_ids), latent_dim=16
+    )
+    checkpoint = torch.load(
+        Path(result["run_path"]) / "checkpoints" / "latest.pt", weights_only=True
+    )
+    model.load_state_dict(checkpoint)
+    model.eval()
+    with torch.no_grad():
+        full_loss, full_tasks, _ = _loss(model, examples, data, torch.device("cpu"))
+    assert result["history"][0]["train_loss"] == pytest.approx(full_loss.item(), abs=1e-7)
+    assert result["history"][0]["train_pizza_loss"] == pytest.approx(
+        full_tasks["pizza"].item(), abs=1e-7
+    )
+    assert result["history"][0]["train_component_loss"] is None
 
 
 def test_empty_component_collection_is_a_valid_pizza_batch(tmp_path):

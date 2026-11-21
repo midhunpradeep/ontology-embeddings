@@ -179,8 +179,6 @@ def train(
             model.train()
             order = list(train_records)
             random.shuffle(order)
-            epoch_losses = []
-            train_task_values: dict[str, list[float]] = {"pizza": [], "component": []}
             gradient_norms: list[float] = []
             for start in range(0, len(order), chunk):
                 batch = order[start : start + chunk]
@@ -197,12 +195,12 @@ def train(
                 gradient_norms.append(
                     float(torch.sqrt(sum(torch.sum(g.detach() ** 2) for g in gradients)))
                 )
-                for name, value in tasks.items():
-                    if value is not None:
-                        train_task_values[name].append(float(value.detach()))
                 optimizer.step()
-                epoch_losses.append(float(loss.detach()))
             model.eval()
+            # Match validation's full-partition objective; minibatch losses are only
+            # optimization signals and must not be averaged equally across batch sizes.
+            with torch.no_grad():
+                train_loss, train_tasks, _ = _loss(model, train_records, dataset, device)
             if validation_records:
                 with torch.no_grad():
                     val_loss, val_tasks, _ = _loss(model, validation_records, dataset, device)
@@ -210,16 +208,14 @@ def train(
                 val_loss, val_tasks = None, {"pizza": None, "component": None}
             current = {
                 "epoch": epoch + 1,
-                "train_loss": sum(epoch_losses) / len(epoch_losses),
+                "train_loss": None if train_loss is None else float(train_loss),
                 "train_pizza_loss": (
-                    sum(train_task_values["pizza"]) / len(train_task_values["pizza"])
-                    if train_task_values["pizza"]
-                    else None
+                    None if train_tasks["pizza"] is None else float(train_tasks["pizza"])
                 ),
                 "train_component_loss": (
-                    sum(train_task_values["component"]) / len(train_task_values["component"])
-                    if train_task_values["component"]
-                    else None
+                    None
+                    if train_tasks["component"] is None
+                    else float(train_tasks["component"])
                 ),
                 "gradient_norm_mean": sum(gradient_norms) / len(gradient_norms),
                 "validation_loss": None if val_loss is None else float(val_loss),
