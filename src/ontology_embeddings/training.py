@@ -167,28 +167,46 @@ def _signature_diagnostics(
     return result
 
 
+def _shuffle_known_columns(
+    targets: Sequence[Sequence[int]], known_masks: Sequence[Sequence[int]], rng: random.Random
+) -> list[tuple[int, ...]]:
+    shuffled = [list(row) for row in targets]
+    if not shuffled:
+        return []
+    for column in range(len(shuffled[0])):
+        eligible_rows = [index for index, mask in enumerate(known_masks) if mask[column]]
+        values = [shuffled[index][column] for index in eligible_rows]
+        rng.shuffle(values)
+        for index, value in zip(eligible_rows, values, strict=True):
+            shuffled[index][column] = value
+    return [tuple(row) for row in shuffled]
+
+
 def shuffle_training_labels(records: Sequence[DatasetRecord], seed: int) -> list[DatasetRecord]:
-    """Permute train-only pizza and occurrence target rows; retain recipient masks and identity."""
+    """Shuffle each known class's training targets among eligible entities; preserve masks."""
     rng = random.Random(seed)
-    pizza_rows = [item.pizza_targets for item in records]
-    pizza_order = list(range(len(pizza_rows)))
-    rng.shuffle(pizza_order)
-    shuffled_pizza = [pizza_rows[index] for index in pizza_order]
-    component_rows = [
-        component.ontology_targets for item in records for component in item.components
-    ]
-    component_order = list(range(len(component_rows)))
-    rng.shuffle(component_order)
-    shuffled_components = [component_rows[index] for index in component_order]
+    pizza_targets = _shuffle_known_columns(
+        [item.pizza_targets for item in records],
+        [item.pizza_known_mask for item in records],
+        rng,
+    )
+    components = [component for item in records for component in item.components]
+    component_targets = _shuffle_known_columns(
+        [item.ontology_targets for item in components],
+        [item.ontology_known_mask for item in components],
+        rng,
+    )
     offset = 0
     output = []
     for index, item in enumerate(records):
-        components = []
+        shuffled_components = []
         for component in item.components:
-            components.append(replace(component, ontology_targets=shuffled_components[offset]))
+            shuffled_components.append(
+                replace(component, ontology_targets=component_targets[offset])
+            )
             offset += 1
         output.append(
-            replace(item, pizza_targets=shuffled_pizza[index], components=tuple(components))
+            replace(item, pizza_targets=pizza_targets[index], components=tuple(shuffled_components))
         )
     return output
 
@@ -208,8 +226,9 @@ def train_shuffled_label_control(
     kwargs.setdefault(
         "provenance_notes",
         [
-            "Control shuffles pizza and component target rows globally within training only; "
-            "recipient masks and all original validation records/labels remain unchanged."
+            "Control independently shuffles each class's known pizza/component targets across "
+            "eligible training entities/occurrences only; masks and all original validation "
+            "records/labels remain unchanged."
         ],
     )
     result = train(dataset, shuffled, validation_records, seed=seed, **kwargs)
