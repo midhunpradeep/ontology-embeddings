@@ -841,6 +841,43 @@ def test_raw_master_audit_contradictions_fail_with_coherent_asset_identity(
     assert any(issue.code == "raw_master_audit_mismatch" for issue in report.errors)
 
 
+def test_raw_master_duplicate_header_is_rejected(prepared_dataset: Path) -> None:
+    path = prepared_dataset / "audit" / "generator_master.csv"
+    with path.open(encoding="utf-8", newline="") as file:
+        reader = csv.reader(file)
+        columns = next(reader)
+        rows = list(reader)
+    duplicate = columns.index("img_name")
+    columns.insert(duplicate + 1, "img_name")
+    for row in rows:
+        row.insert(duplicate + 1, row[duplicate])
+    with path.open("w", encoding="utf-8", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(columns)
+        writer.writerows(rows)
+    _refresh_manifest_asset(prepared_dataset, "audit/generator_master.csv")
+
+    report = validate_dataset(prepared_dataset, write_report=False)
+
+    assert not report.valid
+    assert any(issue.code == "raw_master_source_metadata" for issue in report.errors)
+
+
+def test_raw_master_filename_identity_does_not_trim_whitespace(prepared_dataset: Path) -> None:
+    _rewrite_raw_master(
+        prepared_dataset,
+        lambda rows: rows[0].update(img_name=f" {rows[0]['img_name']} "),
+    )
+
+    report = validate_dataset(prepared_dataset, write_report=False)
+
+    assert not report.valid
+    assert any(
+        issue.code == "raw_master_audit_mismatch" and issue.field == "img_name"
+        for issue in report.errors
+    )
+
+
 def test_blank_raw_origin_matches_absent_audit_origin(prepared_dataset: Path) -> None:
     with (prepared_dataset / "audit" / "generator_master.csv").open(
         encoding="utf-8", newline=""
@@ -861,7 +898,14 @@ def test_blank_raw_origin_matches_absent_audit_origin(prepared_dataset: Path) ->
 
 @pytest.mark.parametrize(
     ("config_value", "diagnostic_field"),
-    [([], "resolved_config"), ({"split_ratios": []}, "resolved_config.split_ratios")],
+    [
+        ([], "resolved_config"),
+        ({"split_ratios": []}, "resolved_config.split_ratios"),
+        (
+            {"split_ratios": {"train": 10**400, "validation": 0, "test": 0}, "split_seed": 1},
+            "resolved_config.split_ratios",
+        ),
+    ],
 )
 def test_malformed_split_configuration_returns_structured_invalid_report(
     prepared_dataset: Path, config_value, diagnostic_field: str
@@ -911,26 +955,108 @@ def test_record_annotation_diagnostics_fail_records_check(
 
         _rewrite_record(prepared_dataset, 0, change)
     elif diagnostic_code == "bbox_category_mismatch":
-        path = prepared_dataset / "labels" / "img_00000_bboxes.json"
-        boxes = json.loads(path.read_text(encoding="utf-8"))
-        boxes["Unexpected"] = boxes.pop(next(iter(boxes)))
-        path.write_text(json.dumps(boxes, indent=2) + "\n", encoding="utf-8")
+        from ontology_embeddings.dataset.constants import DETECTOR_CATEGORIES
+
+        boxes_path = prepared_dataset / "labels" / "img_00000_bboxes.json"
+        boxes = json.loads(boxes_path.read_text(encoding="utf-8"))
+        empty_category = next(name for name in DETECTOR_CATEGORIES if name not in boxes)
+        boxes[empty_category] = []
+        boxes_path.write_text(json.dumps(boxes, indent=2) + "\n", encoding="utf-8")
+        contours_path = prepared_dataset / "labels" / "img_00000_contours.json"
+        contours = json.loads(contours_path.read_text(encoding="utf-8"))
+        contours[empty_category] = []
+        contours_path.write_text(json.dumps(contours, indent=2) + "\n", encoding="utf-8")
         _refresh_manifest_asset(prepared_dataset, "labels/img_00000_bboxes.json")
+        _refresh_manifest_asset(prepared_dataset, "labels/img_00000_contours.json")
     elif diagnostic_code == "image_color_space":
         path = prepared_dataset / "images" / "img_00000.png"
         with Image.open(path) as image:
             image.convert("L").save(path)
         _refresh_manifest_asset(prepared_dataset, "images/img_00000.png")
     else:
+        records = [
+            json.loads(line)
+            for line in (prepared_dataset / "samples.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
+        ]
+        sample = records[0]
+        counts = sample["audit"]["raw_generator"]["topping_counts"]
+        changed_topping = next(name for name, count in counts.items() if count > 0)
 
         def change(record: dict) -> None:
-            counts = record["audit"]["raw_generator"]["topping_counts"]
-            occupied = next(name for name, count in counts.items() if count > 0)
-            counts[occupied] += 1
+            record["audit"]["raw_generator"]["topping_counts"][changed_topping] += 1
 
         _rewrite_record(prepared_dataset, 0, change)
+
+        def change_raw(rows: list[dict[str, str]]) -> None:
+            source_row = next(row for row in rows if row["ref"] == sample["sample_id"])
+            source_row[changed_topping] = str(int(source_row[changed_topping]) + 1)
+
+        _rewrite_raw_master(prepared_dataset, change_raw)
 
     report = validate_dataset(prepared_dataset, write_report=False)
 
     assert any(issue.code == diagnostic_code for issue in report.errors)
     assert report.checks["records_and_annotations"] is False
+    if diagnostic_code == "component_count_mismatch":
+        assert not any(issue.code == "raw_master_audit_mismatch" for issue in report.errors)
+    if diagnostic_code == "bbox_category_mismatch":
+        assert not any(
+            issue.code in {"unsupported_annotation_category", "contour_category_mismatch"}
+            for issue in report.errors
+        )
+
+
+@pytest.mark.parametrize(
+    ("diagnostic_code", "summary"),
+    [
+        ("unsafe_annotation_path", "records_and_annotations"),
+        ("unsupported_annotation_category", "records_and_annotations"),
+        ("duplicate_sample_id", "records_and_annotations"),
+        ("sample_id_scheme", "records_and_annotations"),
+        ("raw_master_sample_ids", "records_and_annotations"),
+        ("component_target_shape", "semantic_targets"),
+    ],
+)
+def test_relevant_diagnostics_fail_their_summary(
+    prepared_dataset: Path, diagnostic_code: str, summary: str
+) -> None:
+    if diagnostic_code == "unsafe_annotation_path":
+        _rewrite_record(
+            prepared_dataset,
+            0,
+            lambda record: record["source_annotations"].update(boxes="../unsafe.json"),
+        )
+    elif diagnostic_code == "unsupported_annotation_category":
+        path = prepared_dataset / "labels" / "img_00000_bboxes.json"
+        boxes = json.loads(path.read_text(encoding="utf-8"))
+        boxes["UnsupportedCategory"] = []
+        path.write_text(json.dumps(boxes, indent=2) + "\n", encoding="utf-8")
+        _refresh_manifest_asset(prepared_dataset, "labels/img_00000_bboxes.json")
+    elif diagnostic_code == "duplicate_sample_id":
+        def change(record: dict) -> None:
+            record["sample_id"] = "img_00000"
+
+        _rewrite_record(prepared_dataset, 1, change)
+    elif diagnostic_code == "sample_id_scheme":
+        _rewrite_record(
+            prepared_dataset,
+            0,
+            lambda record: record["audit"]["raw_generator"].update(source_ref="other-ref"),
+        )
+    elif diagnostic_code == "raw_master_sample_ids":
+        _rewrite_raw_master(prepared_dataset, lambda rows: rows[0].update(ref="unknown-ref"))
+    else:
+        _rewrite_record(
+            prepared_dataset,
+            0,
+            lambda record: record["components"][0].update(ontology_targets=[]),
+        )
+
+    report = validate_dataset(prepared_dataset, write_report=False)
+
+    assert any(issue.code == diagnostic_code for issue in report.errors)
+    assert report.checks[summary] is False
+    if diagnostic_code == "component_target_shape":
+        assert report.checks["records_and_annotations"] is True

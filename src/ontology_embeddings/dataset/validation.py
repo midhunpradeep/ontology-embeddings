@@ -1376,8 +1376,10 @@ def _load_raw_source_rows(root: Path, errors: list[Diagnostic]) -> dict[str, dic
     try:
         with path.open(encoding="utf-8", newline="") as file:
             reader = csv.DictReader(file)
-            if not reader.fieldnames or not required.issubset(reader.fieldnames):
-                missing = sorted(required - set(reader.fieldnames or []))
+            if not reader.fieldnames or len(reader.fieldnames) != len(set(reader.fieldnames)):
+                raise ValueError("raw generator CSV contains duplicate column names")
+            if not required.issubset(reader.fieldnames):
+                missing = sorted(required - set(reader.fieldnames))
                 raise ValueError(f"raw generator CSV is missing required columns: {missing}")
             values: dict[str, dict[str, str]] = {}
             for line_number, row in enumerate(reader, start=2):
@@ -1475,7 +1477,7 @@ def _compare_raw_source_row(
 
     def normalized_filename(field: str) -> str | None:
         value = row.get(field)
-        return value.strip() if isinstance(value, str) and value.strip() else None
+        return value if isinstance(value, str) and value else None
 
     source_names = audit.get("original_annotation_filenames")
     expected_names = {
@@ -1790,7 +1792,7 @@ def validate_dataset(
                         path=str(records_path),
                         field="split",
                     )
-            except (KeyError, TypeError, ValueError) as error:
+            except (KeyError, TypeError, ValueError, OverflowError) as error:
                 _add_issue(
                     errors,
                     "split_config",
@@ -1851,6 +1853,11 @@ def validate_dataset(
                     "image_path",
                     "invalid_bbox",
                     "unsupported_detector_category",
+                    "unsupported_annotation_category",
+                    "unsafe_annotation_path",
+                    "duplicate_sample_id",
+                    "sample_id_scheme",
+                    "raw_master_sample_ids",
                     "detector_category_id",
                     "component_id_scheme",
                     "component_category_metadata",
@@ -1891,6 +1898,7 @@ def validate_dataset(
                 in {
                     "pizza_targets",
                     "component_targets",
+                    "component_target_shape",
                     "pizza_known_mask",
                     "component_known_mask",
                     "source_labels",
