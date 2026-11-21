@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
 import random
+import tempfile
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -20,6 +22,22 @@ from .features import (
 )
 from .model import AffineMultiLabelModel, masked_task_loss
 from .run_store import RunRecord
+
+
+def _atomic_torch_save(value: Any, path: Path | str) -> None:
+    """Write a checkpoint beside its destination, replacing it only after success."""
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent
+    )
+    os.close(descriptor)
+    temporary = Path(temporary_name)
+    try:
+        torch.save(value, temporary)
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def _applicability(dataset: PreparedDataset, task: str) -> list[float]:
@@ -115,12 +133,12 @@ def train(
         dataset={},
         seed=seed,
     )
-    rec.update(
-        provenance_notes=list(provenance_notes),
-        feature_schema=FEATURE_SCHEMA,
-        environment={"torch": torch.__version__, "device": "cpu", "cuda": torch.version.cuda},
-    )
     try:
+        rec.update(
+            provenance_notes=list(provenance_notes),
+            feature_schema=FEATURE_SCHEMA,
+            environment={"torch": torch.__version__, "device": "cpu", "cuda": torch.version.cuda},
+        )
         rec.update(
             dataset={
                 "dataset_id": dataset.dataset_id,
@@ -214,13 +232,13 @@ def train(
             }
             history.append(current)
             rec.metric(current)
-            torch.save(model.state_dict(), rec.path / "checkpoints" / "latest.pt")
+            _atomic_torch_save(model.state_dict(), rec.path / "checkpoints" / "latest.pt")
             if (
                 current["validation_loss"] is not None
                 and current["validation_loss"] < best_validation
             ):
                 best_validation = current["validation_loss"]
-                torch.save(model.state_dict(), rec.path / "checkpoints" / "best.pt")
+                _atomic_torch_save(model.state_dict(), rec.path / "checkpoints" / "best.pt")
             rec.update(last_epoch=epoch + 1, latest_metrics=current)
         update_by_module = {
             module: any(
@@ -249,5 +267,9 @@ def train(
         )
         return result
     except BaseException as error:
-        rec.fail(error)
+        try:
+            rec.fail(error)
+        except BaseException:
+            # Failure recording is best-effort; retain the original training exception.
+            pass
         raise

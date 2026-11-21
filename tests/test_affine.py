@@ -139,6 +139,42 @@ def test_repeated_component_occurrences_are_all_parent_indexed():
     assert packed[3][0].tolist() == packed[3][1].tolist()
 
 
+def test_known_but_inapplicable_nonfinite_logits_are_excluded_for_both_tasks():
+    pizza = torch.tensor([[0.4, float("nan")]], requires_grad=True)
+    pizza_targets = torch.tensor([[1.0, 0.0]])
+    pizza_known = torch.tensor([[True, True]])
+    pizza_applicable = torch.tensor([[True, False]])
+    component = torch.tensor([[-0.7, float("inf")]], requires_grad=True)
+    component_targets = torch.tensor([[0.0, 1.0]])
+    component_known = torch.tensor([[True, True]])
+    component_applicable = torch.tensor([[True, False]])
+    total, tasks = masked_task_loss(
+        pizza,
+        pizza_targets,
+        pizza_known,
+        pizza_applicable,
+        component,
+        component_targets,
+        component_known,
+        component_applicable,
+        [0],
+    )
+    assert total is not None and torch.isfinite(total)
+    assert tasks["pizza"].item() == pytest.approx(
+        torch.nn.functional.binary_cross_entropy_with_logits(
+            torch.tensor([0.4]), torch.tensor([1.0])
+        ).item()
+    )
+    assert tasks["component"].item() == pytest.approx(
+        torch.nn.functional.binary_cross_entropy_with_logits(
+            torch.tensor([-0.7]), torch.tensor([0.0])
+        ).item()
+    )
+    total.backward()
+    assert torch.isfinite(pizza.grad[0, 0]) and pizza.grad[0, 1] == 0
+    assert torch.isfinite(component.grad[0, 0]) and component.grad[0, 1] == 0
+
+
 def test_masked_nonfinite_logits_do_not_contaminate_eligible_loss_or_gradients():
     pizza = torch.tensor([[0.2, float("nan")]], requires_grad=True)
     pizza_targets = torch.tensor([[1.0, 0.0]])
@@ -166,6 +202,56 @@ def test_masked_nonfinite_logits_do_not_contaminate_eligible_loss_or_gradients()
     assert pizza.grad[0, 1] == 0
     assert torch.isfinite(component.grad[0, 0])
     assert component.grad[0, 1] == 0
+
+
+def test_initial_run_update_failure_is_recorded_failed_and_original_error_reraised(
+    tmp_path, monkeypatch
+):
+    dataset = SimpleNamespace(
+        dataset_id="update-failure",
+        dataset_manifest_sha256="m",
+        class_manifest_sha256="c",
+        schema_version="v",
+        canonical_class_ids=(),
+        pizza_supervision_class_ids=(),
+        component_supervision_class_ids=(),
+    )
+    original_index = RunRecord._index
+    calls = 0
+
+    def fail_once_after_registration(self):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("injected update-index failure")
+        return original_index(self)
+
+    monkeypatch.setattr(RunRecord, "_index", fail_once_after_registration)
+    with pytest.raises(OSError, match="injected update-index failure"):
+        train(dataset, [], artifact_root=tmp_path, invocation="index failure")
+    entries = find_runs(tmp_path)
+    assert len(entries) == 1
+    assert entries[0]["status"] == "failed"
+    manifest = json.loads((tmp_path / entries[0]["run_id"] / "manifest.json").read_text())
+    assert manifest["status"] == "failed"
+    assert "injected update-index failure" in manifest["error"]
+
+
+def test_atomic_checkpoint_failure_preserves_previous_file(tmp_path, monkeypatch):
+    from ontology_embeddings.training import _atomic_torch_save
+
+    checkpoint = tmp_path / "latest.pt"
+    torch.save({"version": "previous"}, checkpoint)
+
+    def fail_temporary_save(value, path):
+        assert Path(path) != checkpoint
+        Path(path).write_bytes(b"partial replacement")
+        raise OSError("injected checkpoint write failure")
+
+    monkeypatch.setattr(torch, "save", fail_temporary_save)
+    with pytest.raises(OSError, match="injected checkpoint write failure"):
+        _atomic_torch_save({"version": "new"}, checkpoint)
+    assert torch.load(checkpoint, weights_only=True) == {"version": "previous"}
 
 
 def test_training_failure_is_registered_and_indexed(tmp_path):
