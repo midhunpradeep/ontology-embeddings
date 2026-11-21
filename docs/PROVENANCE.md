@@ -106,8 +106,11 @@ does not claim continuous visibility, no exposure, or zero access.
 
 The remote material during the observed public state included the initial README/main branch,
 issues and comments #1–#5, including #5's detailed PR 2 affine specification, explicitly blocked
-and not authorized for implementation. No PR 1 code branch or PR was remote. GitHub traffic
-endpoints queried at 12:29Z reported 0 views/unique views, 0 clones/unique cloners, and 0 forks;
+and not authorized for implementation. No PR 1 code branch or PR was remote. The coordinator's
+content inspection found no credentials in the remote material observed; this finding is limited
+to the inspected contents and does not establish that there was no exposure, access, or copying.
+GitHub traffic endpoints queried at 12:29Z reported 0 views/unique views, 0 clones/unique
+cloners, and 0 forks;
 these metrics cannot establish that no one accessed or copied material. Current repository
 visibility is PRIVATE. Human assessment of this incident is required before merge; current
 visibility and traffic counts do not resolve that assessment. Issue #5 remains blocked and is not
