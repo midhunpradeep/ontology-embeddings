@@ -1383,11 +1383,14 @@ def _load_raw_source_rows(root: Path, errors: list[Diagnostic]) -> dict[str, dic
                 raise ValueError(f"raw generator CSV is missing required columns: {missing}")
             values: dict[str, dict[str, str]] = {}
             for line_number, row in enumerate(reader, start=2):
-                sample_id = row.get("ref")
+                raw_ref = row.get("ref")
+                sample_id = raw_ref.strip() if isinstance(raw_ref, str) else ""
                 if not sample_id:
                     raise ValueError(f"row {line_number} has an empty ref")
                 if sample_id in values:
-                    raise ValueError(f"duplicate raw generator ref {sample_id!r}")
+                    raise ValueError(
+                        f"duplicate raw generator ref after normalization {sample_id!r}"
+                    )
                 values[sample_id] = row
             return values
     except (OSError, csv.Error, ValueError) as error:
@@ -1897,6 +1900,7 @@ def validate_dataset(
                 issue.code
                 in {
                     "pizza_targets",
+                    "target_shape",
                     "component_targets",
                     "component_target_shape",
                     "pizza_known_mask",

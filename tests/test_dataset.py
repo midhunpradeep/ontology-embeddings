@@ -157,6 +157,63 @@ def test_malformed_or_unsupported_origin_values_fail_preparation(
         prepare_dataset(small_config, tmp_path / "invalid-origin", project_root=tmp_path)
 
 
+def test_preparation_and_validation_canonicalize_source_refs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, small_config: DatasetConfig
+) -> None:
+    from ontology_embeddings.dataset import preparation
+
+    def generate_with_padded_ref(
+        dataset_dir, config, *, project_root, source_repo=None, progress=None
+    ):
+        result = fake_generate_raw_dataset(
+            dataset_dir,
+            config,
+            project_root=project_root,
+            source_repo=source_repo,
+            progress=progress,
+        )
+        source_csv = dataset_dir / "csv" / "pizzaiolo_dataset.csv"
+        with source_csv.open(encoding="utf-8", newline="") as file:
+            rows = list(csv.DictReader(file))
+            fieldnames = list(rows[0])
+        rows[0]["ref"] = f"  {rows[0]['ref']}  "
+        with source_csv.open("w", encoding="utf-8", newline="") as file:
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+        return result
+
+    monkeypatch.setattr(preparation, "generate_raw_dataset", generate_with_padded_ref)
+    prepared = prepare_dataset(small_config, tmp_path / "padded-ref", project_root=tmp_path)
+
+    assert load_records(prepared / "samples.jsonl")[0].sample_id == "img_00000"
+    report = validate_dataset(prepared, write_report=False)
+    assert report.valid, report.errors
+
+
+def test_validator_rejects_raw_refs_empty_after_canonicalization(
+    prepared_dataset: Path,
+) -> None:
+    _rewrite_raw_master(prepared_dataset, lambda rows: rows[0].update(ref="  \t  "))
+
+    report = validate_dataset(prepared_dataset, write_report=False)
+
+    assert any(issue.code == "raw_master_source_metadata" for issue in report.errors)
+
+
+def test_validator_rejects_raw_refs_colliding_after_canonicalization(
+    prepared_dataset: Path,
+) -> None:
+    def collide_refs(rows: list[dict[str, str]]) -> None:
+        rows[1]["ref"] = f" {rows[0]['ref']} "
+
+    _rewrite_raw_master(prepared_dataset, collide_refs)
+
+    report = validate_dataset(prepared_dataset, write_report=False)
+
+    assert any(issue.code == "raw_master_source_metadata" for issue in report.errors)
+
+
 def test_blank_origin_remains_a_known_negative_and_random_generator_type_is_preserved(
     prepared_dataset: Path,
 ) -> None:
@@ -1006,6 +1063,20 @@ def test_record_annotation_diagnostics_fail_records_check(
             issue.code in {"unsupported_annotation_category", "contour_category_mismatch"}
             for issue in report.errors
         )
+
+
+def test_pizza_target_shape_fails_semantic_targets_summary(prepared_dataset: Path) -> None:
+    _rewrite_record(
+        prepared_dataset,
+        0,
+        lambda record: record["pizza"].update(ontology_targets=[]),
+    )
+    _refresh_manifest_asset(prepared_dataset, "samples.jsonl")
+
+    report = validate_dataset(prepared_dataset, write_report=False)
+
+    assert any(issue.code == "target_shape" for issue in report.errors)
+    assert report.checks["semantic_targets"] is False
 
 
 @pytest.mark.parametrize(
