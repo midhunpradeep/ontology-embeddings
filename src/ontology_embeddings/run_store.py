@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import uuid
@@ -74,6 +75,7 @@ class RunRecord:
         config: dict[str, Any],
         dataset: dict[str, Any] | None = None,
         seed: int | None = None,
+        issue: str | None = None,
     ):
         self.store = Path(root).expanduser().resolve()
         self.run_id = (
@@ -92,7 +94,9 @@ class RunRecord:
             "dataset": dataset or {},
             "config": config,
             "seed": seed,
+            "issue": issue,
             "python": sys.version,
+            "environment": {"platform": sys.platform, "python": sys.version},
             "platform": sys.platform,
         }
         try:
@@ -139,6 +143,7 @@ class RunRecord:
                 "source",
                 "dataset",
                 "config",
+                "issue",
             )
         }
         entry.update(
@@ -166,6 +171,16 @@ class RunRecord:
             traceback="".join(traceback.format_exception(error)),
         )
 
+    def interrupt(self, error: BaseException) -> None:
+        import traceback
+
+        self.update(
+            status="interrupted",
+            finished_at=datetime.now(timezone.utc).isoformat(),
+            error=f"{type(error).__name__}: {error}",
+            traceback="".join(traceback.format_exception(error)),
+        )
+
     def metric(self, value: dict[str, Any]) -> None:
         path = self.path / "metrics.jsonl"
         with path.open("a", encoding="utf-8") as stream:
@@ -180,11 +195,56 @@ def find_runs(root: Path | str, **filters: str) -> list[dict[str, Any]]:
     if not index.exists():
         return []
     latest: dict[str, dict[str, Any]] = {}
-    for line in index.read_text(encoding="utf-8").splitlines():
-        item = json.loads(line)
+    for line in index.read_bytes().decode("utf-8", errors="replace").splitlines():
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            # A crash may leave a torn append; keep earlier durable records searchable.
+            continue
+        if not isinstance(item, dict) or not isinstance(item.get("run_id"), str):
+            continue
         latest[item["run_id"]] = item
     return [
         item
         for item in latest.values()
         if all(str(item.get(key)) == value for key, value in filters.items())
     ]
+
+
+def export_run(root: Path | str, run_id: str, destination: Path | str) -> dict[str, str]:
+    """Copy a complete run bundle and return a SHA-256 of its deterministic file listing."""
+    source = Path(root) / run_id
+    if not source.is_dir():
+        raise FileNotFoundError(f"run {run_id!r} not found under {root}")
+    target = Path(destination)
+    if target.exists():
+        raise FileExistsError(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    staging = target.with_name(f".{target.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        shutil.copytree(source, staging)
+        digests = {
+            path.relative_to(staging).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted(staging.rglob("*"))
+            if path.is_file()
+        }
+        checksum = hashlib.sha256(json.dumps(digests, sort_keys=True).encode()).hexdigest()
+        _atomic_json(staging / "checksums.json", {"files": digests, "bundle_sha256": checksum})
+        os.replace(staging, target)
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging)
+    return {"path": str(target), "bundle_sha256": checksum}
+
+
+def verify_export(path: Path | str) -> bool:
+    """Verify an export's file hashes and aggregate bundle digest."""
+    root = Path(path)
+    record = json.loads((root / "checksums.json").read_text(encoding="utf-8"))
+    files = record["files"]
+    actual = {name: hashlib.sha256((root / name).read_bytes()).hexdigest() for name in files}
+    return (
+        actual == files
+        and hashlib.sha256(json.dumps(actual, sort_keys=True).encode()).hexdigest()
+        == record["bundle_sha256"]
+    )

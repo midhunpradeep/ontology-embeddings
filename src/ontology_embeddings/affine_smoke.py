@@ -114,6 +114,9 @@ def run_smoke(
             provenance_notes=PROVENANCE_NOTES,
             run_record=rec,
         )
+    except KeyboardInterrupt as error:
+        rec.interrupt(error)
+        raise
     except BaseException as error:
         rec.fail(error)
         raise

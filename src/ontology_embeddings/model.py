@@ -67,6 +67,21 @@ def masked_task_loss(
     component_parent: Sequence[int],
 ) -> tuple[torch.Tensor | None, dict[str, torch.Tensor | None]]:
     """Reduce each entity, components within parent pizza, then available tasks equally."""
+    if len(component_parent) != component_logits.shape[0]:
+        raise ValueError(
+            "component_parent length must equal the number of component rows "
+            f"({len(component_parent)} != {component_logits.shape[0]})"
+        )
+    if any(
+        isinstance(owner, bool)
+        or not isinstance(owner, int)
+        or owner < 0
+        or owner >= pizza_logits.shape[0]
+        for owner in component_parent
+    ):
+        raise ValueError(
+            "component_parent values must be integer indices in range [0, pizza_count)"
+        )
     pizza_loss = _masked_entity_mean(pizza_logits, pizza_targets, pizza_known, pizza_applicable)
     component_valid = component_known.bool() & component_applicable.bool()
     counts = component_valid.sum(dim=1)

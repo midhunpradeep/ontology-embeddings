@@ -19,8 +19,14 @@ from ontology_embeddings.features import (
     pizza_features,
 )
 from ontology_embeddings.model import AffineMultiLabelModel, masked_task_loss
-from ontology_embeddings.run_store import RunRecord, find_runs
-from ontology_embeddings.training import _loss, _pack, train
+from ontology_embeddings.run_store import RunRecord, export_run, find_runs, verify_export
+from ontology_embeddings.training import (
+    _loss,
+    _pack,
+    shuffle_training_labels,
+    train,
+    train_shuffled_label_control,
+)
 
 
 def record(*, topping_count: int = 1, category: str = "AnchovyTopping", sample: str = "train"):
@@ -104,6 +110,56 @@ def test_masked_loss_normalizes_known_applicable_and_per_pizza_component_means()
     assert total == pytest.approx(expected, abs=1e-5)
 
 
+def test_shuffled_training_control_is_seeded_and_preserves_validation_records(tmp_path):
+    first_targets, second_targets, known = [0] * 66, [0] * 66, [0] * 66
+    second_targets[0] = 1
+    known[0] = 1
+    first = replace(
+        record(sample="first"), pizza_targets=tuple(first_targets), pizza_known_mask=tuple(known)
+    )
+    second = replace(
+        record(sample="second"), pizza_targets=tuple(second_targets), pizza_known_mask=tuple(known)
+    )
+    shuffled_a = shuffle_training_labels([first, second], seed=31)
+    shuffled_b = shuffle_training_labels([first, second], seed=31)
+    assert [item.pizza_targets for item in shuffled_a] == [
+        item.pizza_targets for item in shuffled_b
+    ]
+    assert sorted(item.pizza_targets for item in shuffled_a) == sorted(
+        [first.pizza_targets, second.pizza_targets]
+    )
+    assert [item.sample_id for item in shuffled_a] == ["first", "second"]
+    assert [item.pizza_known_mask for item in shuffled_a] == [
+        first.pizza_known_mask,
+        second.pizza_known_mask,
+    ]
+    validation = record(sample="validation")
+    before = validation.pizza_targets
+    data = SimpleNamespace(
+        dataset_id="shuffle",
+        dataset_manifest_sha256="m",
+        class_manifest_sha256="c",
+        schema_version="v",
+        canonical_class_ids=(0,),
+        class_names=("class-0",),
+        pizza_supervision_class_ids=(0,),
+        component_supervision_class_ids=(),
+    )
+    result = train_shuffled_label_control(
+        data,
+        [first, second],
+        [validation],
+        artifact_root=tmp_path,
+        seed=31,
+        epochs=1,
+    )
+    assert result["status"] == "completed"
+    manifest = json.loads((Path(result["run_path"]) / "manifest.json").read_text())
+    assert manifest["purpose"] == "shuffled-label-control"
+    assert manifest["dataset"]["validation_sample_ids"] == ["validation"]
+    assert validation.pizza_targets == before
+
+
 def test_class_targets_project_in_nontrivial_canonical_id_order():
     base = record()
     pizza_targets = [0] * 66
@@ -118,20 +174,30 @@ def test_class_targets_project_in_nontrivial_canonical_id_order():
         base,
         pizza_targets=tuple(pizza_targets),
         pizza_known_mask=tuple(pizza_known),
-        components=(replace(base.components[0], ontology_targets=tuple(component_targets),
-                            ontology_known_mask=tuple(component_known)),),
+        components=(
+            replace(
+                base.components[0],
+                ontology_targets=tuple(component_targets),
+                ontology_known_mask=tuple(component_known),
+            ),
+        ),
     )
     dataset = SimpleNamespace(canonical_class_ids=(4, 1, 3))
     assert targets_in_trainable_order(dataset, item) == (
-        (1, 0, 1), (1, 0, 1), ((0, 1, 1),), ((1, 1, 0),)
+        (1, 0, 1),
+        (1, 0, 1),
+        ((0, 1, 1),),
+        ((1, 1, 0),),
     )
 
 
 def test_repeated_component_occurrences_are_all_parent_indexed():
     first = record(sample="first")
     second = record(sample="second")
-    batch = [replace(first, components=(first.components[0], first.components[0])),
-             replace(second, components=(second.components[0],))]
+    batch = [
+        replace(first, components=(first.components[0], first.components[0])),
+        replace(second, components=(second.components[0],)),
+    ]
     dataset = SimpleNamespace(canonical_class_ids=tuple(range(60)))
     packed = _pack(batch, dataset, torch.device("cpu"))
     assert packed[3].shape[0] == 3
@@ -202,6 +268,20 @@ def test_masked_nonfinite_logits_do_not_contaminate_eligible_loss_or_gradients()
     assert pizza.grad[0, 1] == 0
     assert torch.isfinite(component.grad[0, 0])
     assert component.grad[0, 1] == 0
+
+
+def test_component_parent_map_rejects_length_and_range_errors():
+    p_logits = torch.zeros((2, 1))
+    p_targets = torch.zeros_like(p_logits)
+    p_mask = torch.ones_like(p_logits, dtype=torch.bool)
+    c_logits = torch.zeros((1, 1))
+    c_targets = torch.zeros_like(c_logits)
+    c_mask = torch.ones_like(c_logits, dtype=torch.bool)
+    args = (p_logits, p_targets, p_mask, p_mask, c_logits, c_targets, c_mask, c_mask)
+    with pytest.raises(ValueError, match="component_parent length"):
+        masked_task_loss(*args, [])
+    with pytest.raises(ValueError, match="component_parent.*range"):
+        masked_task_loss(*args, [2])
 
 
 def test_initial_run_index_failure_is_recorded_failed_and_original_error_reraised(
@@ -287,6 +367,47 @@ def test_atomic_checkpoint_failure_preserves_previous_file(tmp_path, monkeypatch
     assert torch.load(checkpoint, weights_only=True) == {"version": "previous"}
 
 
+def test_run_export_checksum_and_interruption_status(tmp_path):
+    run = RunRecord(tmp_path / "runs", purpose="debug", invocation="export", config={}, issue="8")
+    run.metric({"epoch": 1})
+    run.interrupt(KeyboardInterrupt())
+    assert find_runs(tmp_path / "runs", status="interrupted", issue="8")[0]["run_id"] == run.run_id
+    exported = export_run(tmp_path / "runs", run.run_id, tmp_path / "exported" / run.run_id)
+    assert verify_export(exported["path"])
+    (Path(exported["path"]) / "metrics.jsonl").write_text("changed")
+    assert not verify_export(exported["path"])
+
+
+def test_find_runs_ignores_torn_trailing_index_line_and_keeps_search(tmp_path):
+    record_store = RunRecord(
+        tmp_path,
+        purpose="debug",
+        invocation="index test",
+        config={"model": "affine"},
+        dataset={"dataset_id": "fixture"},
+    )
+    with (tmp_path / "index.jsonl").open("a", encoding="utf-8") as stream:
+        stream.write('{"run_id":')
+    entries = find_runs(tmp_path, dataset_id="fixture")
+    assert [item["run_id"] for item in entries] == [record_store.run_id]
+
+
+def test_trainer_rejects_sealed_test_records_before_evaluation(tmp_path):
+    data = SimpleNamespace(
+        dataset_id="sealed",
+        dataset_manifest_sha256="m",
+        class_manifest_sha256="c",
+        schema_version="v",
+        canonical_class_ids=(0,),
+        pizza_supervision_class_ids=(0,),
+        component_supervision_class_ids=(),
+    )
+    sealed = replace(record(sample="sealed"), split="test")
+    with pytest.raises(ValueError, match="sealed test"):
+        train(data, [record()], [sealed], artifact_root=tmp_path)
+    assert find_runs(tmp_path, status="failed")[0]["dataset_id"] == "sealed"
+
+
 def test_training_failure_is_registered_and_indexed(tmp_path):
     dataset = SimpleNamespace(
         dataset_id="bad",
@@ -318,6 +439,7 @@ def test_run_provenance_does_not_attribute_an_unrelated_cwd_git_repo(tmp_path, m
     foreign = tmp_path / "foreign"
     foreign.mkdir()
     import subprocess
+
     subprocess.run(["git", "init", "-q"], cwd=foreign, check=True)
     subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=foreign, check=True)
     subprocess.run(["git", "config", "user.name", "Test"], cwd=foreign, check=True)
@@ -508,14 +630,36 @@ def test_empty_component_collection_is_a_valid_pizza_batch(tmp_path):
         pizza_known_mask=tuple(known),
         audit={"raw_generator": raw},
     )
+    unseen = replace(
+        only_pizza,
+        sample_id="unseen-feature",
+        audit={
+            "raw_generator": {
+                **raw,
+                "topping_counts": {**raw["topping_counts"], "AnchovyTopping": 2},
+            }
+        },
+    )
     result = train(
         data,
         [only_pizza],
-        [only_pizza],
+        [only_pizza, unseen],
         artifact_root=tmp_path,
         epochs=1,
         purpose="smoke",
         invocation="empty-components-test",
     )
     assert result["status"] == "completed"
+    assert result["best_checkpoint_reload_metrics_equivalent"] is True
+    assert result["baseline"]["pizza"]["training_known"][0] == 1
+    assert (
+        result["history"][0]["diagnostics"]["validation"]["pizza"]["per_class"]["0"][
+            "known_negative"
+        ]
+        == 2
+    )
+    signatures = result["history"][0]["diagnostics"]["feature_signatures"]["pizza"]
+    assert signatures["validation_seen_count"] == 1
+    assert signatures["validation_unseen_count"] == 1
+    assert signatures["overlap_distinct_signatures"] == 1
     assert result["history"][0]["validation_component_loss"] is None
