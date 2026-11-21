@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import csv
 import hashlib
 import json
@@ -1356,33 +1357,149 @@ def _validate_record(
             )
 
 
-def _load_raw_source_types(root: Path, errors: list[Diagnostic]) -> dict[str, str] | None:
-    """Read original CSV type cells so normalized audit values stay source-faithful."""
+def _load_raw_source_rows(root: Path, errors: list[Diagnostic]) -> dict[str, dict[str, str]] | None:
+    """Load preserved raw generator rows by ref without normalizing source serialization."""
 
     path = root / AUDIT_DIR / RAW_MASTER_FILENAME
+    required = {
+        "ref",
+        "img_name",
+        "type",
+        "hasTopping",
+        *TOPPING_COLUMNS,
+        "hasBase",
+        "hasCountryOfOrigin",
+        "boxes_name",
+        "contours_name",
+        "segmentation_name",
+    }
     try:
         with path.open(encoding="utf-8", newline="") as file:
             reader = csv.DictReader(file)
-            if not reader.fieldnames or not {"ref", "type"}.issubset(reader.fieldnames):
-                raise ValueError("raw generator CSV must contain ref and type columns")
-            values: dict[str, str] = {}
+            if not reader.fieldnames or not required.issubset(reader.fieldnames):
+                missing = sorted(required - set(reader.fieldnames or []))
+                raise ValueError(f"raw generator CSV is missing required columns: {missing}")
+            values: dict[str, dict[str, str]] = {}
             for line_number, row in enumerate(reader, start=2):
                 sample_id = row.get("ref")
-                source_type = row.get("type")
-                if not sample_id or source_type is None:
-                    raise ValueError(f"row {line_number} has an empty ref or missing type field")
+                if not sample_id:
+                    raise ValueError(f"row {line_number} has an empty ref")
                 if sample_id in values:
                     raise ValueError(f"duplicate raw generator ref {sample_id!r}")
-                values[sample_id] = source_type
+                values[sample_id] = row
             return values
     except (OSError, csv.Error, ValueError) as error:
         _add_issue(
             errors,
-            "raw_master_source_type",
-            f"Cannot read original generator type metadata: {error}",
+            "raw_master_source_metadata",
+            f"Cannot read original generator metadata: {error}",
             path=str(path),
         )
         return None
+
+
+def _compare_raw_source_row(
+    row: dict[str, str], record: DatasetRecord, raw_master_path: Path, errors: list[Diagnostic]
+) -> None:
+    """Cross-check raw CSV facts against their normalized prepared audit counterparts."""
+
+    audit = record.audit.get("raw_generator")
+    if not isinstance(audit, dict):
+        return
+
+    def mismatch(field: str, detail: str) -> None:
+        _add_issue(
+            errors,
+            "raw_master_audit_mismatch",
+            detail,
+            sample_id=record.sample_id,
+            path=str(raw_master_path),
+            field=field,
+        )
+
+    raw_ref = row.get("ref")
+    if not isinstance(raw_ref, str) or raw_ref.strip() != audit.get("source_ref"):
+        mismatch("ref", "Raw CSV ref differs from audit.raw_generator.source_ref")
+
+    raw_type = row.get("type")
+    expected_type = "None" if audit.get("source_type") is None else audit.get("source_type")
+    if not isinstance(expected_type, str) or raw_type != expected_type:
+        mismatch("type", "Raw CSV type literal differs from audit.raw_generator.source_type")
+
+    try:
+        parsed_toppings = ast.literal_eval(row["hasTopping"])
+        if not isinstance(parsed_toppings, (list, tuple)) or not all(
+            isinstance(item, str) for item in parsed_toppings
+        ):
+            raise ValueError("hasTopping must serialize a list of strings")
+    except (KeyError, SyntaxError, TypeError, ValueError) as error:
+        mismatch("hasTopping", f"Raw CSV hasTopping cannot be parsed: {error}")
+    else:
+        audit_toppings = audit.get("has_topping")
+        if (
+            len(parsed_toppings) != len(set(parsed_toppings))
+            or not isinstance(audit_toppings, list)
+            or not all(isinstance(item, str) for item in audit_toppings)
+            or set(parsed_toppings) != set(audit_toppings)
+        ):
+            mismatch(
+                "hasTopping",
+                "Raw CSV hasTopping set differs from audit.raw_generator.has_topping",
+            )
+
+    counts = audit.get("topping_counts")
+    if not isinstance(counts, dict):
+        counts = {}
+    for name in TOPPING_COLUMNS:
+        try:
+            raw_value = row[name]
+            if not re.fullmatch(r"[0-9]+", raw_value.strip()):
+                raise ValueError(f"invalid count {raw_value!r}")
+            raw_count = int(raw_value)
+        except (AttributeError, KeyError, TypeError, ValueError):
+            mismatch(name, f"Raw CSV {name} is not a serialized nonnegative integer")
+            continue
+        if counts.get(name) != raw_count:
+            mismatch(name, f"Raw CSV {name} count differs from audit.raw_generator.topping_counts")
+
+    # Preparation treats exactly an empty CSV cell as absence; nonempty tokens remain literal.
+    raw_base = row.get("hasBase") or None
+    if raw_base != audit.get("has_base"):
+        mismatch("hasBase", "Raw CSV hasBase differs from audit.raw_generator.has_base")
+    raw_origin = row.get("hasCountryOfOrigin") or None
+    if raw_origin != audit.get("country_of_origin"):
+        mismatch(
+            "hasCountryOfOrigin",
+            "Raw CSV hasCountryOfOrigin differs from audit.raw_generator.country_of_origin",
+        )
+
+    def normalized_filename(field: str) -> str | None:
+        value = row.get(field)
+        return value.strip() if isinstance(value, str) and value.strip() else None
+
+    source_names = audit.get("original_annotation_filenames")
+    expected_names = {
+        "boxes_name": (
+            source_names.get("boxes") if isinstance(source_names, dict) else None,
+            Path(record.source_annotations.get("boxes", "")).name,
+        ),
+        "contours_name": (
+            source_names.get("contours") if isinstance(source_names, dict) else None,
+            Path(record.source_annotations.get("contours", "")).name,
+        ),
+        "segmentation_name": (
+            source_names.get("segmentation") if isinstance(source_names, dict) else None,
+            Path(record.source_annotations.get("segmentation", "")).name,
+        ),
+    }
+    for column, expected in expected_names.items():
+        raw_name = normalized_filename(column)
+        if raw_name is None or raw_name != expected[0] or raw_name != expected[1]:
+            mismatch(column, f"Raw CSV {column} differs from stored annotation source filename")
+
+    raw_image_name = normalized_filename("img_name")
+    if raw_image_name != Path(record.image_path).name:
+        mismatch("img_name", "Raw CSV img_name differs from the stored image filename")
 
 
 def validate_dataset(
@@ -1500,34 +1617,37 @@ def validate_dataset(
     except (OSError, ValueError) as error:
         _add_issue(errors, "samples_jsonl", str(error), path=str(records_path))
         records = []
-    raw_source_types = _load_raw_source_types(root, errors)
-    if raw_source_types is not None:
+    raw_source_rows = _load_raw_source_rows(root, errors)
+    if raw_source_rows is not None:
         sample_ids_from_records = {record.sample_id for record in records}
-        if set(raw_source_types) != sample_ids_from_records:
+        if set(raw_source_rows) != sample_ids_from_records:
             _add_issue(
                 errors,
                 "raw_master_sample_ids",
                 "Original generator CSV refs do not match the prepared sample IDs",
                 path=str(root / AUDIT_DIR / RAW_MASTER_FILENAME),
             )
+        raw_master_path = root / AUDIT_DIR / RAW_MASTER_FILENAME
         for record in records:
-            raw_generator = record.audit.get("raw_generator")
-            source_type = (
-                raw_generator.get("source_type") if isinstance(raw_generator, dict) else object()
-            )
-            expected_cell = "None" if source_type is None else source_type
-            if (
-                not isinstance(expected_cell, str)
-                or raw_source_types.get(record.sample_id) != expected_cell
-            ):
-                _add_issue(
-                    errors,
-                    "generator_type_source_metadata",
-                    "Stored generator source_type does not match the original CSV type cell",
-                    sample_id=record.sample_id,
-                    path=str(root / AUDIT_DIR / RAW_MASTER_FILENAME),
-                    field="type",
+            row = raw_source_rows.get(record.sample_id)
+            if row is not None:
+                _compare_raw_source_row(row, record, raw_master_path, errors)
+                raw_generator = record.audit.get("raw_generator")
+                source_type = (
+                    raw_generator.get("source_type")
+                    if isinstance(raw_generator, dict)
+                    else object()
                 )
+                expected_cell = "None" if source_type is None else source_type
+                if not isinstance(expected_cell, str) or row.get("type") != expected_cell:
+                    _add_issue(
+                        errors,
+                        "generator_type_source_metadata",
+                        "Stored generator source_type does not match the original CSV type cell",
+                        sample_id=record.sample_id,
+                        path=str(raw_master_path),
+                        field="type",
+                    )
     if not records:
         _add_issue(
             errors,
@@ -1624,38 +1744,60 @@ def validate_dataset(
             )
 
         generation = manifest.get("resolved_config", {})
-        split_ratios = generation.get("split_ratios", {})
-        try:
-            expected_assignment = assign_splits(
-                [
-                    {"sample_id": item.sample_id, "generator_type": item.generator_type}
-                    for item in records
-                ],
-                train_size=float(split_ratios["train"]),
-                valid_size=float(split_ratios["validation"]),
-                test_size=float(split_ratios["test"]),
-                seed=int(generation["split_seed"]),
-            )
-            actual_assignment = {item.sample_id: item.split for item in records}
-            if expected_assignment != actual_assignment:
-                _add_issue(
-                    errors,
-                    "split_determinism",
-                    (
-                        "Split assignments differ from the documented deterministic "
-                        "type-stratified policy"
-                    ),
-                    path=str(records_path),
-                    field="split",
-                )
-        except (KeyError, TypeError, ValueError) as error:
+        split_config_valid = True
+        if not isinstance(generation, dict):
             _add_issue(
                 errors,
                 "split_config",
-                f"Cannot reconstruct split policy from manifest: {error}",
+                "resolved_config must be a JSON object to validate deterministic splits",
+                path=str(manifest_path),
+                field="resolved_config",
+            )
+            generation = {}
+            split_config_valid = False
+        split_ratios = generation.get("split_ratios", {})
+        if not isinstance(split_ratios, dict):
+            _add_issue(
+                errors,
+                "split_config",
+                "resolved_config.split_ratios must be a JSON object",
                 path=str(manifest_path),
                 field="resolved_config.split_ratios",
             )
+            split_ratios = {}
+            split_config_valid = False
+        if split_config_valid:
+            try:
+                expected_assignment = assign_splits(
+                    [
+                        {"sample_id": item.sample_id, "generator_type": item.generator_type}
+                        for item in records
+                    ],
+                    train_size=float(split_ratios["train"]),
+                    valid_size=float(split_ratios["validation"]),
+                    test_size=float(split_ratios["test"]),
+                    seed=int(generation["split_seed"]),
+                )
+                actual_assignment = {item.sample_id: item.split for item in records}
+                if expected_assignment != actual_assignment:
+                    _add_issue(
+                        errors,
+                        "split_determinism",
+                        (
+                            "Split assignments differ from the documented deterministic "
+                            "type-stratified policy"
+                        ),
+                        path=str(records_path),
+                        field="split",
+                    )
+            except (KeyError, TypeError, ValueError) as error:
+                _add_issue(
+                    errors,
+                    "split_config",
+                    f"Cannot reconstruct split policy from manifest: {error}",
+                    path=str(manifest_path),
+                    field="resolved_config.split_ratios",
+                )
 
         try:
             statistics = build_statistics(records, classes)
@@ -1704,9 +1846,25 @@ def validate_dataset(
                 issue.code
                 in {
                     "missing_image",
+                    "image_color_space",
+                    "image_dimensions",
+                    "image_path",
                     "invalid_bbox",
+                    "unsupported_detector_category",
+                    "detector_category_id",
+                    "component_id_scheme",
+                    "component_category_metadata",
+                    "base_annotation_count",
+                    "flag_annotation_count",
+                    "origin_flag_mismatch",
+                    "missing_origin_flag",
                     "bbox_file",
                     "bbox_annotation_mismatch",
+                    "bbox_category_mismatch",
+                    "duplicate_component_id",
+                    "annotation_reference",
+                    "component_count_mismatch",
+                    "raw_master_audit_mismatch",
                     "missing_annotation_asset",
                     "contour_file",
                     "contour_category_mismatch",
@@ -1744,7 +1902,7 @@ def validate_dataset(
                 in {
                     "generator_type_metadata",
                     "generator_type_source_metadata",
-                    "raw_master_source_type",
+                    "raw_master_source_metadata",
                     "raw_master_sample_ids",
                 }
                 for issue in errors

@@ -745,3 +745,192 @@ def test_country_origin_without_flag_is_known_negative_but_germany_is_unsupporte
     _rewrite_record(prepared_dataset, random_index, change)
     report = validate_dataset(prepared_dataset, write_report=False)
     assert any(item.code == "unsupported_origin" and item.sample_id for item in report.errors)
+
+
+def _refresh_manifest_identity(dataset: Path) -> None:
+    manifest_path = dataset / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    identity = {
+        "schema_version": manifest["schema_version"],
+        "resolved_config": manifest["resolved_config"],
+        "generator_commit": manifest["source"]["generator_commit"],
+        "ontology_sha256": manifest["ontology"]["sha256"],
+        "asset_checksums": manifest["asset_checksums"],
+    }
+    manifest["dataset_id"] = (
+        "pizza-" + hashlib.sha256(canonical_json_bytes(identity)).hexdigest()[:20]
+    )
+    manifest["manifest_id"] = hashlib.sha256(
+        canonical_json_bytes(
+            {key: value for key, value in manifest.items() if key != "manifest_id"}
+        )
+    ).hexdigest()
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _rewrite_raw_master(dataset: Path, mutate) -> None:
+    path = dataset / "audit" / "generator_master.csv"
+    with path.open(encoding="utf-8", newline="") as file:
+        reader = csv.DictReader(file)
+        fieldnames = reader.fieldnames
+        rows = list(reader)
+    mutate(rows)
+    with path.open("w", encoding="utf-8", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    _refresh_manifest_asset(dataset, "audit/generator_master.csv")
+
+
+@pytest.mark.parametrize(
+    "mismatch",
+    [
+        "ref",
+        "type",
+        "has_topping",
+        "topping_counts",
+        "has_base",
+        "origin",
+        "img_name",
+        "annotation_filename",
+    ],
+)
+def test_raw_master_audit_contradictions_fail_with_coherent_asset_identity(
+    prepared_dataset: Path, mismatch: str
+) -> None:
+    from ontology_embeddings.dataset.constants import TOPPING_COLUMNS
+
+    def mutate(rows: list[dict[str, str]]) -> None:
+        row_id = (
+            "img_00003" if mismatch in {"topping_counts", "has_topping", "type"} else "img_00000"
+        )
+        record = next(row for row in rows if row["ref"] == row_id)
+        if mismatch == "ref":
+            other = next(row for row in rows if row["ref"] == "img_00001")
+            record["ref"], other["ref"] = other["ref"], record["ref"]
+        elif mismatch == "type":
+            record["type"] = "American"
+        elif mismatch == "has_topping":
+            record["hasTopping"] = "[]"
+            for name in TOPPING_COLUMNS:
+                record[name] = "0"
+        elif mismatch == "topping_counts":
+            occupied = next(name for name in TOPPING_COLUMNS if int(record[name]) > 0)
+            empty = next(name for name in TOPPING_COLUMNS if int(record[name]) == 0)
+            record[occupied] = str(int(record[occupied]) - 1)
+            record[empty] = str(int(record[empty]) + 1)
+            record["hasTopping"] = repr(
+                sorted(name for name in TOPPING_COLUMNS if int(record[name]) > 0)
+            )
+        elif mismatch == "has_base":
+            record["hasBase"] = "ThinAndCrispyBase"
+        elif mismatch == "origin":
+            record["hasCountryOfOrigin"] = "England"
+        elif mismatch == "img_name":
+            record["img_name"] = "img_00000-renamed.png"
+        else:
+            record["boxes_name"] = "img_00000-renamed_bboxes.json"
+
+    _rewrite_raw_master(prepared_dataset, mutate)
+    report = validate_dataset(prepared_dataset, write_report=False)
+
+    assert not report.valid
+    assert any(issue.code == "raw_master_audit_mismatch" for issue in report.errors)
+
+
+def test_blank_raw_origin_matches_absent_audit_origin(prepared_dataset: Path) -> None:
+    with (prepared_dataset / "audit" / "generator_master.csv").open(
+        encoding="utf-8", newline=""
+    ) as file:
+        csv_origin = next(
+            row["hasCountryOfOrigin"] for row in csv.DictReader(file) if row["ref"] == "img_00003"
+        )
+    random_record = next(
+        record
+        for record in load_records(prepared_dataset / "samples.jsonl")
+        if record.sample_id == "img_00003"
+    )
+    assert csv_origin == ""
+    assert random_record.audit["raw_generator"]["country_of_origin"] is None
+    report = validate_dataset(prepared_dataset, write_report=False)
+    assert report.valid, [item.to_dict() for item in report.errors]
+
+
+@pytest.mark.parametrize(
+    ("config_value", "diagnostic_field"),
+    [([], "resolved_config"), ({"split_ratios": []}, "resolved_config.split_ratios")],
+)
+def test_malformed_split_configuration_returns_structured_invalid_report(
+    prepared_dataset: Path, config_value, diagnostic_field: str
+) -> None:
+    manifest_path = prepared_dataset / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["resolved_config"] = config_value
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    _refresh_manifest_identity(prepared_dataset)
+
+    report = validate_dataset(prepared_dataset, write_report=False)
+
+    assert not report.valid
+    assert any(
+        issue.code == "split_config" and issue.field == diagnostic_field for issue in report.errors
+    )
+
+
+@pytest.mark.parametrize(
+    "diagnostic_code",
+    [
+        "duplicate_component_id",
+        "annotation_reference",
+        "bbox_category_mismatch",
+        "image_color_space",
+        "component_count_mismatch",
+    ],
+)
+def test_record_annotation_diagnostics_fail_records_check(
+    prepared_dataset: Path, diagnostic_code: str
+) -> None:
+    from PIL import Image
+
+    if diagnostic_code == "duplicate_component_id":
+
+        def change(record: dict) -> None:
+            record["components"][1]["component_id"] = record["components"][0]["component_id"]
+
+        _rewrite_record(prepared_dataset, 0, change)
+    elif diagnostic_code == "annotation_reference":
+
+        def change(record: dict) -> None:
+            record["components"][0]["annotation_path"] = "labels/unreferenced.json"
+
+        _rewrite_record(prepared_dataset, 0, change)
+    elif diagnostic_code == "bbox_category_mismatch":
+        path = prepared_dataset / "labels" / "img_00000_bboxes.json"
+        boxes = json.loads(path.read_text(encoding="utf-8"))
+        boxes["Unexpected"] = boxes.pop(next(iter(boxes)))
+        path.write_text(json.dumps(boxes, indent=2) + "\n", encoding="utf-8")
+        _refresh_manifest_asset(prepared_dataset, "labels/img_00000_bboxes.json")
+    elif diagnostic_code == "image_color_space":
+        path = prepared_dataset / "images" / "img_00000.png"
+        with Image.open(path) as image:
+            image.convert("L").save(path)
+        _refresh_manifest_asset(prepared_dataset, "images/img_00000.png")
+    else:
+
+        def change(record: dict) -> None:
+            counts = record["audit"]["raw_generator"]["topping_counts"]
+            occupied = next(name for name, count in counts.items() if count > 0)
+            counts[occupied] += 1
+
+        _rewrite_record(prepared_dataset, 0, change)
+
+    report = validate_dataset(prepared_dataset, write_report=False)
+
+    assert any(issue.code == diagnostic_code for issue in report.errors)
+    assert report.checks["records_and_annotations"] is False

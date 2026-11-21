@@ -95,26 +95,36 @@ ontology/generated images and annotations; review upstream acknowledgements and 
 redistribution or commercial use. CC BY-NC 4.0 does not grant rights to the source project's
 own code.
 
-### Repository visibility incident
+### Repository visibility history
 
 The repository was created with `gh repo create --private` at 2026-11-20T10:20:59Z; the first
 `gh repo view`, at 10:21:16Z, reported PRIVATE. GitHub's Events feed records a `PublicEvent` at
-10:21:00Z. The 2026-11-20T12:11:13Z issue #4 comment noted that GitHub then reported PUBLIC;
-a direct query at 12:24:09Z confirmed PUBLIC. The coordinator patched visibility back to PRIVATE
-at 12:24:52Z and verified PRIVATE at 12:24:54Z. The full exposure interval is unknown; this record
-does not claim continuous visibility, no exposure, or zero access.
+10:21:00Z, so the event-feed entry and the first direct observation do not provide a continuous,
+unambiguous visibility timeline. The human has clarified that they intentionally changed the
+repository visibility to PUBLIC. The exact time of that user-authorized change is not established
+by the available evidence. The 2026-11-20T12:11:13Z issue #4 comment noted that GitHub then
+reported PUBLIC; a direct query at 12:24:09Z also confirmed PUBLIC.
+
+At 2026-11-20T12:24:52Z, a local agent changed visibility from PUBLIC back to PRIVATE without
+the human's authorization, and verified PRIVATE at 12:24:54Z (the repository metadata's
+`updated_at` was 12:24:55Z). This restoration was not authorized;
+the human explicitly instructed that repository visibility not be changed during the current
+audit remediation. At remediation start, repository visibility was again verified PUBLIC, as the
+human had intentionally selected. It remains PUBLIC during this remediation; no visibility action
+was taken. The observed GitHub events, direct checks, and human clarification should all be retained
+as recorded above: exact transition timing and any intervening visibility changes cannot be
+reconstructed with certainty.
 
 The remote material during the observed public state included the initial README/main branch,
 issues and comments #1–#5, including #5's detailed PR 2 affine specification, explicitly blocked
-and not authorized for implementation. No PR 1 code branch or PR was remote. The coordinator's
-content inspection found no credentials in the remote material observed; this finding is limited
-to the inspected contents and does not establish that there was no exposure, access, or copying.
-GitHub traffic endpoints queried at 12:29Z reported 0 views/unique views, 0 clones/unique
-cloners, and 0 forks;
-these metrics cannot establish that no one accessed or copied material. Current repository
-visibility is PRIVATE. Human assessment of this incident is required before merge; current
-visibility and traffic counts do not resolve that assessment. Issue #5 remains blocked and is not
-implementation authorization.
+and not authorized for implementation. No PR 1 code branch or PR was remote at the recorded
+observation. The coordinator's content inspection found no credentials in the remote material
+observed; this finding is limited to the inspected contents and does not establish that there was
+no exposure, access, or copying. GitHub traffic endpoints queried at 12:29Z reported 0 views/unique
+views, 0 clones/unique cloners, and 0 forks; these metrics cannot establish that no one accessed
+or copied material. Access to, or copies of, material during a public interval cannot be ruled out.
+Human assessment of the visibility history remains required before merge. Issue #5 remains blocked
+and is not implementation authorization.
 
 ## Validation evidence
 
