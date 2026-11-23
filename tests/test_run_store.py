@@ -59,6 +59,39 @@ def test_non_editable_package_does_not_infer_checkout_from_cwd(tmp_path, monkeyp
     assert record.manifest["source"]["commit_sha"] != foreign_sha
 
 
+def test_git_repository_environment_cannot_redirect_source_provenance(tmp_path, monkeypatch):
+    module_root = _source_tree(tmp_path / "module-source")
+    module_sha = _git_repo(module_root)
+    foreign_root = _source_tree(tmp_path / "foreign-source")
+    (foreign_root / "foreign.txt").write_text("different checkout\n", encoding="utf-8")
+    foreign_sha = _git_repo(foreign_root)
+    assert module_sha != foreign_sha
+
+    (module_root / "src/ontology_embeddings/untracked.py").write_text(
+        "VALUE = 1\n", encoding="utf-8"
+    )
+    excludes_file = tmp_path / "git-excludes"
+    excludes_file.write_text("untracked.py\n", encoding="utf-8")
+    monkeypatch.setenv("GIT_DIR", str(foreign_root / ".git"))
+    monkeypatch.setenv("GIT_WORK_TREE", str(module_root))
+    monkeypatch.setenv("GIT_INDEX_FILE", str(foreign_root / ".git/index"))
+    monkeypatch.setenv("GIT_OBJECT_DIRECTORY", str(foreign_root / ".git/objects"))
+    monkeypatch.setenv("GIT_ALTERNATE_OBJECT_DIRECTORIES", str(foreign_root / ".git/objects"))
+    monkeypatch.setenv("GIT_COMMON_DIR", str(foreign_root / ".git"))
+    monkeypatch.setenv("GIT_NAMESPACE", "redirected")
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setenv("GIT_CONFIG_KEY_0", "core.excludesFile")
+    monkeypatch.setenv("GIT_CONFIG_VALUE_0", str(excludes_file))
+
+    provenance = source_provenance(module_root)
+
+    assert provenance["availability"] == "available"
+    assert provenance["commit_sha"] == module_sha
+    assert provenance["commit_sha"] != foreign_sha
+    assert provenance["dirty"] is True
+    assert "src/ontology_embeddings/untracked.py" in provenance["relevant_source_sha256"]
+
+
 def test_git_unavailable_is_explicit_and_dirty_state_unknown(tmp_path):
     root = _source_tree(tmp_path / "source")
 

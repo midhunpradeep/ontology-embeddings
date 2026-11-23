@@ -9,8 +9,11 @@ Run manifests distinguish source commit SHA and dirty source fingerprint, resolv
 ## Source identity availability
 
 Source discovery is based only on the installed `run_store.py` module location, never the
-process working directory. In an editable/source-tree checkout, the module must be at
-`<repository>/src/ontology_embeddings/run_store.py`, the root must contain the project marker
+process working directory. Provenance Git subprocesses discard inherited `GIT_*` environment
+variables, which could redirect repository, worktree, index, refs, objects, namespace, or status
+behavior away from the implementation checkout. In an editable/source-tree checkout, the module
+must be at `<repository>/src/ontology_embeddings/run_store.py`, the root must contain the project
+marker
 `pyproject.toml`, and Git must report that same directory as the repository root. If these checks
 succeed, the manifest records the full commit SHA and Git working-tree dirty state; relevant
 changed source paths are hashed where present. A regular (non-editable) installation places the

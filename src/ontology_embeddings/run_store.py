@@ -46,6 +46,11 @@ def _unavailable_provenance(reason: str) -> dict[str, Any]:
     }
 
 
+def _git_subprocess_environment() -> dict[str, str]:
+    """Prevent inherited Git variables from redirecting or altering provenance probes."""
+    return {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+
+
 def source_provenance(root: Path | None) -> dict[str, Any]:
     if root is None:
         return _unavailable_provenance("installed package is not inside a source checkout")
@@ -54,9 +59,11 @@ def source_provenance(root: Path | None) -> dict[str, Any]:
     if not (root / "pyproject.toml").is_file() or not expected_module.is_file():
         return _unavailable_provenance("source checkout identity could not be validated")
     try:
+        git_env = _git_subprocess_environment()
         git_root = subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],
             cwd=root,
+            env=git_env,
             check=True,
             text=True,
             capture_output=True,
@@ -64,11 +71,17 @@ def source_provenance(root: Path | None) -> dict[str, Any]:
         if Path(git_root).resolve() != root:
             return _unavailable_provenance("source directory is not the Git repository root")
         sha = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=root, check=True, text=True, capture_output=True
+            ["git", "rev-parse", "HEAD"],
+            cwd=root,
+            env=git_env,
+            check=True,
+            text=True,
+            capture_output=True,
         ).stdout.strip()
         status = subprocess.run(
             ["git", "status", "--porcelain=v1", "--untracked-files=all"],
             cwd=root,
+            env=git_env,
             check=True,
             text=True,
             capture_output=True,
