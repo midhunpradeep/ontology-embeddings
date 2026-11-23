@@ -25,8 +25,44 @@ def _atomic_json(path: Path, value: Any) -> None:
     temp.replace(path)
 
 
-def source_provenance(root: Path) -> dict[str, Any]:
+def _implementation_source_root(module_file: str | Path | None = None) -> Path | None:
+    """Return the checkout root only when this module is under its source tree."""
+    module_path = Path(__file__ if module_file is None else module_file).resolve()
+    if len(module_path.parents) < 3:
+        return None
+    root = module_path.parents[2]
+    expected_module = root / "src" / "ontology_embeddings" / "run_store.py"
+    return root if module_path == expected_module else None
+
+
+def _unavailable_provenance(reason: str) -> dict[str, Any]:
+    return {
+        "commit_sha": None,
+        "dirty": None,
+        "relevant_source_sha256": {},
+        "source_fingerprint_sha256": None,
+        "availability": "unavailable",
+        "fingerprint_note": f"git provenance unavailable: {reason}",
+    }
+
+
+def source_provenance(root: Path | None) -> dict[str, Any]:
+    if root is None:
+        return _unavailable_provenance("installed package is not inside a source checkout")
+    root = Path(root).resolve()
+    expected_module = root / "src" / "ontology_embeddings" / "run_store.py"
+    if not (root / "pyproject.toml").is_file() or not expected_module.is_file():
+        return _unavailable_provenance("source checkout identity could not be validated")
     try:
+        git_root = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=root,
+            check=True,
+            text=True,
+            capture_output=True,
+        ).stdout.strip()
+        if Path(git_root).resolve() != root:
+            return _unavailable_provenance("source directory is not the Git repository root")
         sha = subprocess.run(
             ["git", "rev-parse", "HEAD"], cwd=root, check=True, text=True, capture_output=True
         ).stdout.strip()
@@ -54,15 +90,11 @@ def source_provenance(root: Path) -> dict[str, Any]:
             "dirty": bool(status),
             "relevant_source_sha256": changed,
             "source_fingerprint_sha256": fingerprint,
+            "availability": "available",
             "fingerprint_note": "working-tree source paths hashed; non-source diff details omitted",
         }
     except Exception as error:  # provenance is best effort and must not mask training
-        return {
-            "commit_sha": None,
-            "dirty": None,
-            "source_fingerprint_sha256": None,
-            "fingerprint_note": f"git provenance unavailable: {type(error).__name__}: {error}",
-        }
+        return _unavailable_provenance(f"{type(error).__name__}: {error}")
 
 
 class RunRecord:
@@ -89,8 +121,8 @@ class RunRecord:
             "status": "running",
             "purpose": purpose,
             "invocation": invocation,
-            # The implementation root is derived from this installed module, never cwd.
-            "source": source_provenance(Path(__file__).resolve().parents[2]),
+            # Editable checkouts are identified from this module path, never from cwd.
+            "source": source_provenance(_implementation_source_root()),
             "dataset": dataset or {},
             "config": config,
             "seed": seed,
@@ -227,11 +259,18 @@ def find_runs(root: Path | str, **filters: str) -> list[dict[str, Any]]:
                 continue
             latest[manifest["run_id"]] = _index_entry(manifest)
 
-    return [
-        item
-        for item in latest.values()
-        if all(str(item.get(key)) == value for key, value in filters.items())
-    ]
+    def matches(item: dict[str, Any]) -> bool:
+        for key, value in filters.items():
+            candidate = item.get(key)
+            if key == "source_sha":
+                # Missing SHA is not a searchable identity; never turn it into "None".
+                if not isinstance(candidate, str) or not candidate or candidate != value:
+                    return False
+            elif str(candidate) != value:
+                return False
+        return True
+
+    return [item for item in latest.values() if matches(item)]
 
 
 def export_run(root: Path | str, run_id: str, destination: Path | str) -> dict[str, str]:

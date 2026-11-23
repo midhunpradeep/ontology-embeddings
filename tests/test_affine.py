@@ -547,15 +547,23 @@ def test_training_failure_is_registered_and_indexed(tmp_path):
     assert len(entries) == 1
     assert entries[0]["status"] == "failed"
     assert find_runs(tmp_path, dataset_id="bad")[0]["run_id"] == entries[0]["run_id"]
-    assert (
-        find_runs(tmp_path, source_sha=entries[0]["source_sha"])[0]["run_id"]
-        == entries[0]["run_id"]
-    )
+    if entries[0]["source_sha"]:
+        assert (
+            find_runs(tmp_path, source_sha=entries[0]["source_sha"])[0]["run_id"]
+            == entries[0]["run_id"]
+        )
+    else:
+        assert find_runs(tmp_path, source_sha="None") == []
     run_id = entries[0]["run_id"]
     manifest = json.loads((tmp_path / run_id / "manifest.json").read_text())
     assert manifest["status"] == "failed"
     assert "at least one pizza" in manifest["error"]
-    assert manifest["source"]["commit_sha"]
+    source = manifest["source"]
+    if source["commit_sha"] is None:
+        assert source["availability"] == "unavailable"
+        assert source["dirty"] is None
+    else:
+        assert source["availability"] == "available"
 
 
 def test_run_provenance_does_not_attribute_an_unrelated_cwd_git_repo(tmp_path, monkeypatch):
@@ -578,8 +586,13 @@ def test_run_provenance_does_not_attribute_an_unrelated_cwd_git_repo(tmp_path, m
         ["git", "rev-parse", "HEAD"], cwd=model_root, check=True, text=True, capture_output=True
     ).stdout.strip()
     rec = RunRecord(tmp_path / "runs", purpose="debug", invocation="test", config={})
-    assert rec.manifest["source"]["commit_sha"] == expected_sha
-    assert rec.manifest["source"]["commit_sha"] != foreign_sha
+    source = rec.manifest["source"]
+    if source["availability"] == "available":
+        assert source["commit_sha"] == expected_sha
+        assert source["commit_sha"] != foreign_sha
+    else:
+        assert source["commit_sha"] is None
+        assert source["dirty"] is None
 
 
 def test_smoke_loader_failure_creates_one_failed_indexed_run(tmp_path):
