@@ -22,6 +22,48 @@ def test_membership_metrics_report_support_and_undefined_denominators():
     assert result["per_class"]["known-negative"]["not_applicable"] == 0
 
 
+def test_f1_is_defined_from_confusion_counts_when_precision_or_recall_is_undefined():
+    # First class has a known positive but no predictions; second has a false positive
+    # despite no known positives. Both confusion-count F1 scores are defined as zero.
+    result = membership_metrics(
+        torch.tensor([[False, True, False], [False, False, False]]),
+        torch.tensor([[True, False, False], [False, False, False]]),
+        torch.tensor([[True, True, True], [False, False, True]]),
+        torch.ones((2, 3), dtype=torch.bool),
+        ["missed-positive", "false-positive-only", "no-decisions"],
+    )
+
+    missed = result["per_class"]["missed-positive"]
+    assert missed["precision"] is None
+    assert missed["recall"] == 0
+    assert missed["f1"] == 0
+    false_positive = result["per_class"]["false-positive-only"]
+    assert false_positive["precision"] == 0
+    assert false_positive["recall"] is None
+    assert false_positive["f1"] == 0
+    assert result["per_class"]["no-decisions"]["f1"] is None
+    assert result["macro_f1"] == 0
+    assert result["weighted_f1"] == 0
+
+
+def test_micro_f1_is_defined_from_confusion_counts_without_predicted_positives():
+    result = membership_metrics(
+        torch.tensor([[False], [False]]),
+        torch.tensor([[True], [False]]),
+        torch.ones((2, 1), dtype=torch.bool),
+        torch.ones((2, 1), dtype=torch.bool),
+    )
+    assert result["micro"] == {"precision": None, "recall": 0, "f1": 0}
+
+    false_positive_only = membership_metrics(
+        torch.tensor([[True]]),
+        torch.tensor([[False]]),
+        torch.ones((1, 1), dtype=torch.bool),
+        torch.ones((1, 1), dtype=torch.bool),
+    )
+    assert false_positive_only["micro"] == {"precision": 0, "recall": None, "f1": 0}
+
+
 def test_frequency_baseline_is_fitted_only_to_train_and_scores_original_validation():
     train_y = torch.tensor([[1, 0], [1, 0], [0, 1]])
     train_known = torch.ones_like(train_y, dtype=torch.bool)

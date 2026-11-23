@@ -46,11 +46,8 @@ def membership_metrics(
         pred_pos = int(predicted.sum())
         precision = tp / pred_pos if pred_pos else None
         recall = tp / pos if pos else None
-        f1 = (
-            (2 * precision * recall / (precision + recall))
-            if precision is not None and recall is not None and precision + recall
-            else (0.0 if precision is not None and recall is not None else None)
-        )
+        f1_denominator = 2 * tp + fp + (pos - tp)
+        f1 = 2 * tp / f1_denominator if f1_denominator else None
         unknown = int((applicable[:, index] & ~known[:, index]).sum())
         per_class[name] = {
             "known_positive": pos,
@@ -78,12 +75,9 @@ def membership_metrics(
     micro_recall = (
         totals["tp"] / (totals["tp"] + totals["fn"]) if totals["tp"] + totals["fn"] else None
     )
+    micro_f1_denominator = 2 * totals["tp"] + totals["fp"] + totals["fn"]
     micro_f1 = (
-        (2 * micro_precision * micro_recall / (micro_precision + micro_recall))
-        if micro_precision is not None
-        and micro_recall is not None
-        and micro_precision + micro_recall
-        else (0.0 if micro_precision is not None and micro_recall is not None else None)
+        2 * totals["tp"] / micro_f1_denominator if micro_f1_denominator else None
     )
     f1_weight = sum(weight for weight, _ in weighted_f1)
     precision_weight = sum(weight for weight, _ in weighted_precision)

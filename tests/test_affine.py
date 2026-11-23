@@ -392,6 +392,48 @@ def test_find_runs_ignores_torn_trailing_index_line_and_keeps_search(tmp_path):
     assert [item["run_id"] for item in entries] == [record_store.run_id]
 
 
+@pytest.mark.parametrize("terminal_status", ["failed", "interrupted"])
+def test_find_runs_reconciles_manifest_after_torn_terminal_index_append(
+    tmp_path, terminal_status
+):
+    store = tmp_path / "runs"
+    run = RunRecord(
+        store,
+        purpose="debug",
+        invocation="terminal reconciliation",
+        config={"model": "affine"},
+        dataset={"dataset_id": "fixture"},
+    )
+    if terminal_status == "failed":
+        run.fail(RuntimeError("synthetic failure"))
+    else:
+        run.interrupt(KeyboardInterrupt("synthetic interruption"))
+
+    index = store / "index.jsonl"
+    lines = index.read_bytes().splitlines(keepends=True)
+    assert len(lines) == 2
+    index.write_bytes(lines[0] + b'{"run_id":')
+
+    matches = find_runs(store, status=terminal_status)
+    assert [item["run_id"] for item in matches] == [run.run_id]
+    assert matches[0]["dataset_id"] == "fixture"
+
+
+def test_find_runs_discovers_manifest_without_index_row(tmp_path):
+    store = tmp_path / "runs"
+    run = RunRecord(
+        store,
+        purpose="debug",
+        invocation="manifest recovery",
+        config={"model": "affine"},
+        dataset={"dataset_id": "manifest-only"},
+    )
+    (store / "index.jsonl").write_bytes(b"")
+
+    matches = find_runs(store, dataset_id="manifest-only", status="running")
+    assert [item["run_id"] for item in matches] == [run.run_id]
+
+
 def test_trainer_rejects_sealed_test_records_before_evaluation(tmp_path):
     data = SimpleNamespace(
         dataset_id="sealed",

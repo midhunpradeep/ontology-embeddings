@@ -129,28 +129,7 @@ class RunRecord:
 
     def _index(self) -> None:
         index = self.store / "index.jsonl"
-        source = self.manifest.get("source", {})
-        dataset = self.manifest.get("dataset", {})
-        config = self.manifest.get("config", {})
-        entry = {
-            key: self.manifest.get(key)
-            for key in (
-                "run_id",
-                "started_at",
-                "status",
-                "purpose",
-                "invocation",
-                "source",
-                "dataset",
-                "config",
-                "issue",
-            )
-        }
-        entry.update(
-            source_sha=source.get("commit_sha"),
-            dataset_id=dataset.get("dataset_id"),
-            model=config.get("model"),
-        )
+        entry = _index_entry(self.manifest)
         with index.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(entry, sort_keys=True, default=str) + "\n")
             stream.flush()
@@ -189,21 +168,65 @@ class RunRecord:
             os.fsync(stream.fileno())
 
 
+def _index_entry(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Project a run manifest onto the searchable index fields."""
+    entry = {
+        key: manifest.get(key)
+        for key in (
+            "run_id",
+            "started_at",
+            "status",
+            "purpose",
+            "invocation",
+            "source",
+            "dataset",
+            "config",
+            "issue",
+        )
+    }
+    source = manifest.get("source")
+    dataset = manifest.get("dataset")
+    config = manifest.get("config")
+    entry.update(
+        source_sha=source.get("commit_sha") if isinstance(source, dict) else None,
+        dataset_id=dataset.get("dataset_id") if isinstance(dataset, dict) else None,
+        model=config.get("model") if isinstance(config, dict) else None,
+    )
+    return entry
+
+
 def find_runs(root: Path | str, **filters: str) -> list[dict[str, Any]]:
-    """Retrieve latest indexed run state by ID, source SHA, dataset, model, purpose, or status."""
-    index = Path(root) / "index.jsonl"
-    if not index.exists():
-        return []
+    """Retrieve run state from the index, reconciled with persisted manifests."""
+    store = Path(root)
+    index = store / "index.jsonl"
     latest: dict[str, dict[str, Any]] = {}
-    for line in index.read_bytes().decode("utf-8", errors="replace").splitlines():
-        try:
-            item = json.loads(line)
-        except json.JSONDecodeError:
-            # A crash may leave a torn append; keep earlier durable records searchable.
-            continue
-        if not isinstance(item, dict) or not isinstance(item.get("run_id"), str):
-            continue
-        latest[item["run_id"]] = item
+    if index.exists():
+        for line in index.read_bytes().decode("utf-8", errors="replace").splitlines():
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError:
+                # Keep earlier durable index rows; manifests below may have later state.
+                continue
+            if not isinstance(item, dict) or not isinstance(item.get("run_id"), str):
+                continue
+            latest[item["run_id"]] = item
+
+    # The manifest is persisted before each index append, so it may contain a newer
+    # terminal status after a torn append. It also recovers runs registered before an
+    # index row could be written. Corrupt/unreadable manifests do not mask index data.
+    if store.is_dir():
+        for run_dir in store.iterdir():
+            manifest_path = run_dir / "manifest.json"
+            if not run_dir.is_dir() or not manifest_path.is_file():
+                continue
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if not isinstance(manifest, dict) or not isinstance(manifest.get("run_id"), str):
+                continue
+            latest[manifest["run_id"]] = _index_entry(manifest)
+
     return [
         item
         for item in latest.values()
