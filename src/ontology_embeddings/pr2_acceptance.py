@@ -241,10 +241,10 @@ def run_acceptance(dataset_path: Path, *, evidence_dir: Path) -> dict[str, Any]:
         "sealed_test": (
             "The training/evaluation loader skips test JSONL rows before parsing, and test "
             "targets are not used for train/validation support reporting, model/config/dataset "
-            "selection, training, validation scoring, predictions, or predictive metrics. The "
-            "separately documented full-dataset integrity validator may inspect all partitions; "
-            "for this recorded reproduction it was used only as an integrity gate, not as "
-            "development feedback."
+            "selection, training, validation scoring, predictions, or predictive metrics. For "
+            "this recorded reproduction, the separate full-dataset integrity validator did "
+            "inspect all partitions, including test, and report split statistics; only its "
+            "integrity status/warnings were used as a gate, not as development feedback."
         ),
         "source": source,
         "dataset": {
