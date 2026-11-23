@@ -20,6 +20,8 @@ def test_membership_metrics_report_support_and_undefined_denominators():
     assert result["per_class"]["unknown"]["unknown"] == 2
     assert result["per_class"]["unknown"]["f1"] is None
     assert result["per_class"]["known-negative"]["not_applicable"] == 0
+    assert result["eligible_entity_count"] == 2
+    assert result["eligible_pizza_count"] == 2
 
 
 def test_f1_is_defined_from_confusion_counts_when_precision_or_recall_is_undefined():

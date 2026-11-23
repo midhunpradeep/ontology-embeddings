@@ -14,6 +14,7 @@ def membership_metrics(
     known: torch.Tensor,
     applicable: torch.Tensor,
     class_names: Sequence[str] | None = None,
+    entity_parent_ids: Sequence[int] | None = None,
 ) -> dict[str, Any]:
     """Report exact known supports; metrics with zero denominator are ``None``."""
     predictions = predictions.bool()
@@ -28,6 +29,8 @@ def membership_metrics(
     names = list(class_names) if class_names is not None else [str(i) for i in range(n_classes)]
     if len(names) != n_classes:
         raise ValueError("class_names length must match class dimension")
+    if entity_parent_ids is not None and len(entity_parent_ids) != predictions.shape[0]:
+        raise ValueError("entity_parent_ids length must match entity dimension")
     per_class: dict[str, Any] = {}
     totals = {key: 0 for key in ("tp", "fp", "fn")}
     defined_f1: list[float] = []
@@ -82,12 +85,25 @@ def membership_metrics(
     f1_weight = sum(weight for weight, _ in weighted_f1)
     precision_weight = sum(weight for weight, _ in weighted_precision)
     recall_weight = sum(weight for weight, _ in weighted_recall)
+    eligible_entities = (known & applicable).any(dim=1)
+    eligible_pizza_count = int(eligible_entities.sum())
+    if entity_parent_ids is not None:
+        eligible_pizza_count = len(
+            {
+                parent
+                for parent, is_eligible in zip(
+                    entity_parent_ids, eligible_entities.tolist(), strict=True
+                )
+                if is_eligible
+            }
+        )
     return {
         "known_positive": sum(item["known_positive"] for item in per_class.values()),
         "known_negative": sum(item["known_negative"] for item in per_class.values()),
         "unknown": sum(item["unknown"] for item in per_class.values()),
         "entity_count": int(predictions.shape[0]),
-        "eligible_entity_count": int((known & applicable).any(dim=1).sum()),
+        "eligible_entity_count": int(eligible_entities.sum()),
+        "eligible_pizza_count": eligible_pizza_count,
         "per_class": per_class,
         "micro": {"precision": micro_precision, "recall": micro_recall, "f1": micro_f1},
         "macro_precision": sum(
@@ -125,6 +141,7 @@ def class_frequency_baseline(
     validation_known: torch.Tensor,
     validation_applicable: torch.Tensor,
     class_names: Sequence[str] | None = None,
+    validation_parent_ids: Sequence[int] | None = None,
 ) -> dict[str, Any]:
     """Fit constant predictions from training frequencies only; score validation labels."""
     train_valid = train_known.bool() & train_applicable.bool()
@@ -138,6 +155,11 @@ def class_frequency_baseline(
         "training_known": support.tolist(),
         "training_frequency": frequency.tolist(),
         "metrics": membership_metrics(
-            predictions, validation_targets, validation_known, validation_applicable, class_names
+            predictions,
+            validation_targets,
+            validation_known,
+            validation_applicable,
+            class_names,
+            validation_parent_ids,
         ),
     }

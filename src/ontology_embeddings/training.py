@@ -97,18 +97,34 @@ def _loss(
     p_logits = model.logits(x_p, "pizza")
     c_logits = model.logits(x_c, "component")
     total, tasks = masked_task_loss(p_logits, y_p, m_p, a_p, c_logits, y_c, m_c, a_c, parents)
-    return total, tasks, (p_logits, c_logits, y_p, m_p, y_c, m_c, a_p, a_c)
+    return total, tasks, (p_logits, c_logits, y_p, m_p, y_c, m_c, a_p, a_c, parents)
+
+
+def _task_metric(
+    name: str,
+    logits: torch.Tensor,
+    targets: torch.Tensor,
+    known: torch.Tensor,
+    applicable: torch.Tensor,
+    class_names: Sequence[str],
+    component_parents: Sequence[int],
+) -> dict[str, Any]:
+    return membership_metrics(
+        logits > 0,
+        targets,
+        known,
+        applicable,
+        class_names,
+        component_parents if name == "component" else None,
+    )
 
 
 def _task_metrics(batch, class_names: Sequence[str]) -> dict[str, Any]:
-    p_logits, c_logits, y_p, m_p, y_c, m_c, a_p, a_c = batch
-    result = {}
-    for name, logits, targets, known, applicable in (
-        ("pizza", p_logits, y_p, m_p, a_p),
-        ("component", c_logits, y_c, m_c, a_c),
-    ):
-        result[name] = membership_metrics(logits > 0, targets, known, applicable, class_names)
-    return result
+    p_logits, c_logits, y_p, m_p, y_c, m_c, a_p, a_c, parents = batch
+    return {
+        "pizza": _task_metric("pizza", p_logits, y_p, m_p, a_p, class_names, parents),
+        "component": _task_metric("component", c_logits, y_c, m_c, a_c, class_names, parents),
+    }
 
 
 def _signature_diagnostics(
@@ -134,10 +150,21 @@ def _signature_diagnostics(
         validation_signatures = [tuple(vector) for vector in validation_vectors]
         seen_mask = [vector in train_signatures for vector in validation_signatures]
         unseen_mask = [not item for item in seen_mask]
-        _, _, y_p, m_p, y_c, m_c, a_p, a_c = validation_batch
+        _, _, y_p, m_p, y_c, m_c, a_p, a_c, component_parents = validation_batch
         targets, known, applicable = (y_p, m_p, a_p) if task == "pizza" else (y_c, m_c, a_c)
         signature_tensor = torch.tensor(seen_mask, dtype=torch.bool, device=targets.device)
         logits = validation_batch[0] if task == "pizza" else validation_batch[1]
+        if task == "component":
+            seen_component_parents = [
+                parent for parent, seen in zip(component_parents, seen_mask, strict=True) if seen
+            ]
+            unseen_component_parents = [
+                parent
+                for parent, seen in zip(component_parents, seen_mask, strict=True)
+                if not seen
+            ]
+        else:
+            seen_component_parents = unseen_component_parents = []
         result[task] = {
             "train_entity_count": len(train_vectors),
             "validation_entity_count": len(validation_vectors),
@@ -149,19 +176,23 @@ def _signature_diagnostics(
             "overlap_distinct_signatures": len(train_signatures & set(validation_signatures)),
             "validation_seen_count": sum(seen_mask),
             "validation_unseen_count": sum(unseen_mask),
-            "validation_seen_metrics": membership_metrics(
-                logits[signature_tensor] > 0,
+            "validation_seen_metrics": _task_metric(
+                task,
+                logits[signature_tensor],
                 targets[signature_tensor],
                 known[signature_tensor],
                 applicable[signature_tensor],
                 class_names,
+                seen_component_parents if task == "component" else (),
             ),
-            "validation_unseen_metrics": membership_metrics(
-                logits[~signature_tensor] > 0,
+            "validation_unseen_metrics": _task_metric(
+                task,
+                logits[~signature_tensor],
                 targets[~signature_tensor],
                 known[~signature_tensor],
                 applicable[~signature_tensor],
                 class_names,
+                unseen_component_parents if task == "component" else (),
             ),
         }
     return result
@@ -372,6 +403,7 @@ def train(
                     validation_batch[3] if task == "pizza" else validation_batch[5],
                     validation_batch[6] if task == "pizza" else validation_batch[7],
                     class_names,
+                    validation_batch[8] if task == "component" else None,
                 )
                 for task in ("pizza", "component")
             }

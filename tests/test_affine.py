@@ -23,6 +23,8 @@ from ontology_embeddings.run_store import RunRecord, export_run, find_runs, veri
 from ontology_embeddings.training import (
     _loss,
     _pack,
+    _signature_diagnostics,
+    _task_metrics,
     shuffle_training_labels,
     train,
     train_shuffled_label_control,
@@ -86,6 +88,45 @@ def test_shared_affine_model_has_separate_adapters_and_exact_zero_boundary():
     assert predictions.tolist() == [[False, True]]
     assert model.pizza_adapter is not model.component_adapter
     assert model.head.out_features == 2
+
+
+def test_task_metrics_count_only_parent_pizzas_with_eligible_component_labels():
+    data = SimpleNamespace(
+        dataset_id="eligible-component-pizzas",
+        dataset_manifest_sha256="synthetic",
+        class_manifest_sha256="classes",
+        schema_version="synthetic-v1",
+        canonical_class_ids=(0,),
+        pizza_supervision_class_ids=(),
+        component_supervision_class_ids=(0,),
+    )
+    eligible = record(sample="eligible")
+    component_known = [0] * 66
+    component_known[0] = 1
+    eligible_component = replace(
+        eligible.components[0], ontology_known_mask=tuple(component_known)
+    )
+    eligible = replace(eligible, components=(eligible_component,))
+    no_eligible_labels = record(sample="no-eligible-labels")
+    model = AffineMultiLabelModel(
+        len(PIZZA_FEATURE_NAMES), len(COMPONENT_FEATURE_NAMES), classes=1, latent_dim=2
+    )
+
+    _, _, eligible_batch = _loss(model, [eligible], data, torch.device("cpu"))
+    _, _, ineligible_batch = _loss(model, [no_eligible_labels], data, torch.device("cpu"))
+
+    assert _task_metrics(eligible_batch, ["class"])["component"]["eligible_pizza_count"] == 1
+    assert _task_metrics(ineligible_batch, ["class"])["component"]["eligible_pizza_count"] == 0
+    assert _task_metrics(eligible_batch, ["class"])["pizza"]["eligible_pizza_count"] == 0
+
+    _, _, mixed_validation_batch = _loss(
+        model, [eligible, no_eligible_labels], data, torch.device("cpu")
+    )
+    signatures = _signature_diagnostics(
+        [eligible], [eligible, no_eligible_labels], mixed_validation_batch, ["class"]
+    )["component"]
+    assert signatures["validation_seen_metrics"]["eligible_pizza_count"] == 1
+    assert signatures["validation_unseen_metrics"]["eligible_pizza_count"] == 0
 
 
 def test_masked_loss_normalizes_known_applicable_and_per_pizza_component_means():
