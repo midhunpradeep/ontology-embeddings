@@ -18171,8 +18171,8 @@
     }
   },
   "test_sealing": {
-    "dataset_integrity_validation": "The dataset validator ran integrity/semantic checks across partitions; its pass/error count was only an integrity gate and was not used for training, predictive metrics, model selection, or dataset/config selection.",
-    "statement": "No test targets were read for support, model/config/dataset selection, training, validation scoring, predictions, or metrics. load_train_validation skipped test JSONL rows before parsing; training accepted train and validation only.",
+    "dataset_integrity_validation": "The recorded dataset validator parsed and checked all partitions, including test, for integrity/semantic consistency and produced split statistics. Only its integrity pass/error/warning status was used as a gate; test values or statistics were not used for dataset/config/model selection, training, validation scoring, predictions, or predictive metrics.",
+    "statement": "No test targets were used for train/validation support reporting, model/config/dataset selection, training, validation scoring, predictions, or predictive metrics. The train/validation loader skips test JSONL rows before parsing. The separately run full-dataset integrity validator did inspect all partitions, including test; its statistics were used only for integrity checks and not as development feedback.",
     "test_metrics_or_predictions": false
   },
   "vocabulary": {

@@ -239,8 +239,12 @@ def run_acceptance(dataset_path: Path, *, evidence_dir: Path) -> dict[str, Any]:
             "learned ontology geometry"
         ),
         "sealed_test": (
-            "No test JSONL rows/targets were parsed, passed to training, scored, or used for "
-            "selection. The train/validation loader skips test lines before JSON parsing."
+            "The training/evaluation loader skips test JSONL rows before parsing, and test "
+            "targets are not used for train/validation support reporting, model/config/dataset "
+            "selection, training, validation scoring, predictions, or predictive metrics. The "
+            "separately documented full-dataset integrity validator may inspect all partitions; "
+            "for this recorded reproduction it was used only as an integrity gate, not as "
+            "development feedback."
         ),
         "source": source,
         "dataset": {

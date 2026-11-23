@@ -1,8 +1,8 @@
 {
-  "bundle_sha256": "bbc7d0ef014f224f5abbacf248118af05da34c6a13d2babc607fbb0dd182b3e9",
+  "bundle_sha256": "bd9931b1a24111fed79c9d76ab4648220ef777867dcc5730f36fcbef0e17052d",
   "files": {
     "README.md": "c4aa585a24fe93a7d4b52ddb76667f771e049d43666ada9f686cb35f1a72a996",
     "best.pt": "ef3605e089da10f9d10b31afb225e50b59eb01ad50aefed0a080012b909dd92b",
-    "metrics.json": "fcbcf0aa56a87cdbf23b4116c7dc8c12b62559234cab652b2c611fd81d5f7ba2"
+    "metrics.json": "a00407999ba74db9bd906f73089402c8d156410e69174bfbb14c55e08e03e35b"
   }
 }
