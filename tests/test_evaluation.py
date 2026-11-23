@@ -84,3 +84,43 @@ def test_frequency_baseline_is_fitted_only_to_train_and_scores_original_validati
     assert result["training_frequency"] == pytest.approx([2 / 3, 1 / 3])
     assert result["metrics"]["per_class"]["a"]["recall"] is None
     assert result["metrics"]["per_class"]["b"]["recall"] == 0
+
+
+def test_frequency_baseline_omits_zero_support_class_instead_of_scoring_negative():
+    train_y = torch.tensor([[0, 1]])
+    train_known = torch.tensor([[False, True]])
+    train_applicable = torch.ones_like(train_known)
+    validation_y = torch.tensor([[1, 1]])
+    validation_known = torch.ones_like(validation_y, dtype=torch.bool)
+    validation_applicable = torch.ones_like(validation_known)
+
+    result = class_frequency_baseline(
+        train_y,
+        train_known,
+        train_applicable,
+        validation_y,
+        validation_known,
+        validation_applicable,
+        ["unsupported-positive", "supported-positive"],
+        class_ids=[12, 13],
+    )
+
+    report = result["baseline_classes"]["unsupported-positive"]
+    assert report == {
+        "class_id": 12,
+        "class_name": "unsupported-positive",
+        "training_support": 0,
+        "prediction": None,
+        "status": "insufficient_training_support",
+    }
+    assert result["training_frequency"] == [None, 1.0]
+    unsupported_metrics = result["metrics"]["per_class"]["unsupported-positive"]
+    assert unsupported_metrics["known_positive"] == 0
+    assert unsupported_metrics["not_applicable"] == 1
+    assert unsupported_metrics["precision"] is None
+    assert unsupported_metrics["recall"] is None
+    assert unsupported_metrics["f1"] is None
+    supported_metrics = result["metrics"]["per_class"]["supported-positive"]
+    assert supported_metrics["known_positive"] == 1
+    assert supported_metrics["recall"] == 1
+    assert validation_y.tolist() == [[1, 1]]

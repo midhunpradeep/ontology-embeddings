@@ -174,7 +174,7 @@ def test_shuffled_training_control_is_seeded_and_preserves_validation_records(tm
         first.pizza_known_mask,
         second.pizza_known_mask,
     ]
-    validation = record(sample="validation")
+    validation = replace(record(sample="validation"), split="validation")
     before = validation.pizza_targets
     data = SimpleNamespace(
         dataset_id="shuffle",
@@ -491,6 +491,46 @@ def test_trainer_rejects_sealed_test_records_before_evaluation(tmp_path):
     assert find_runs(tmp_path, status="failed")[0]["dataset_id"] == "sealed"
 
 
+@pytest.mark.parametrize(
+    ("train_records", "validation_records", "error"),
+    [
+        ([replace(record(sample="wrong-train"), split="validation")], [], "train_records"),
+        (
+            [record(sample="valid-train")],
+            [record(sample="wrong-validation")],
+            "validation_records",
+        ),
+        (
+            [record(sample="duplicate")],
+            [replace(record(sample="duplicate"), split="validation")],
+            "overlap",
+        ),
+    ],
+)
+def test_trainer_rejects_mixed_or_overlapping_splits_and_registers_failure(
+    tmp_path, train_records, validation_records, error
+):
+    data = SimpleNamespace(
+        dataset_id="split-integrity",
+        dataset_manifest_sha256="m",
+        class_manifest_sha256="c",
+        schema_version="v",
+        canonical_class_ids=(0,),
+        pizza_supervision_class_ids=(0,),
+        component_supervision_class_ids=(),
+    )
+
+    with pytest.raises(ValueError, match=error):
+        train(data, train_records, validation_records, artifact_root=tmp_path)
+
+    failures = find_runs(tmp_path, status="failed")
+    assert len(failures) == 1
+    manifest = json.loads((tmp_path / failures[0]["run_id"] / "manifest.json").read_text())
+    assert manifest["status"] == "failed"
+    assert error in manifest["error"]
+    assert not (tmp_path / failures[0]["run_id"] / "checkpoints").exists()
+
+
 def test_training_failure_is_registered_and_indexed(tmp_path):
     dataset = SimpleNamespace(
         dataset_id="bad",
@@ -723,10 +763,12 @@ def test_empty_component_collection_is_a_valid_pizza_batch(tmp_path):
             }
         },
     )
+    validation = replace(only_pizza, sample_id="validation", split="validation")
+    unseen = replace(unseen, split="validation")
     result = train(
         data,
         [only_pizza],
-        [only_pizza, unseen],
+        [validation, unseen],
         artifact_root=tmp_path,
         epochs=1,
         purpose="smoke",

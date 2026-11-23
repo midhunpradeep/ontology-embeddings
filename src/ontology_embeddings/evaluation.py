@@ -142,24 +142,50 @@ def class_frequency_baseline(
     validation_applicable: torch.Tensor,
     class_names: Sequence[str] | None = None,
     validation_parent_ids: Sequence[int] | None = None,
+    class_ids: Sequence[int] | None = None,
 ) -> dict[str, Any]:
-    """Fit constant predictions from training frequencies only; score validation labels."""
+    """Fit train-frequency constants; omit zero-support classes from validation scoring."""
     train_valid = train_known.bool() & train_applicable.bool()
     positives = (train_valid & train_targets.bool()).sum(dim=0)
     support = train_valid.sum(dim=0)
-    frequency = torch.where(support > 0, positives.float() / support.clamp_min(1), 0.0)
-    predictions = (frequency >= 0.5).expand_as(validation_targets)
+    supported = support > 0
+    frequencies = [
+        float(positives[index] / support[index]) if bool(supported[index]) else None
+        for index in range(len(support))
+    ]
+    names = list(class_names) if class_names is not None else [str(i) for i in range(len(support))]
+    ids = list(class_ids) if class_ids is not None else list(range(len(support)))
+    if len(names) != len(support) or len(ids) != len(support):
+        raise ValueError("class_names and class_ids must match the class dimension")
+    class_reports = {}
+    predictions_by_class = []
+    for index, (name, class_id) in enumerate(zip(names, ids, strict=True)):
+        has_support = bool(supported[index])
+        prediction = frequencies[index] >= 0.5 if has_support else None
+        predictions_by_class.append(bool(prediction) if prediction is not None else False)
+        class_reports[name] = {
+            "class_id": class_id,
+            "class_name": name,
+            "training_support": int(support[index]),
+            "prediction": prediction,
+            "status": "supported" if has_support else "insufficient_training_support",
+        }
+    predictions = torch.tensor(
+        predictions_by_class, dtype=torch.bool, device=validation_targets.device
+    ).expand_as(validation_targets)
+    scored_applicable = validation_applicable.bool() & supported.to(validation_applicable.device)
     return {
-        "prediction_rule": "training_frequency >= 0.5 (ties positive)",
+        "prediction_rule": "training_frequency >= 0.5 (ties positive); zero support is undefined",
         "training_positive": positives.tolist(),
         "training_known": support.tolist(),
-        "training_frequency": frequency.tolist(),
+        "training_frequency": frequencies,
+        "baseline_classes": class_reports,
         "metrics": membership_metrics(
             predictions,
             validation_targets,
             validation_known,
-            validation_applicable,
-            class_names,
+            scored_applicable,
+            names,
             validation_parent_ids,
         ),
     }

@@ -357,6 +357,14 @@ def train(
             raise ValueError("training split must contain at least one pizza")
         if any(item.split == "test" for item in (*train_records, *validation_records)):
             raise ValueError("sealed test records cannot be passed to training or validation")
+        if any(item.split != "train" for item in train_records):
+            raise ValueError("all train_records must have split='train'")
+        if any(item.split != "validation" for item in validation_records):
+            raise ValueError("all validation_records must have split='validation'")
+        train_sample_ids = {item.sample_id for item in train_records}
+        validation_sample_ids = {item.sample_id for item in validation_records}
+        if train_sample_ids & validation_sample_ids:
+            raise ValueError("overlapping sample IDs between train and validation are not allowed")
         if epochs < 1 or learning_rate <= 0:
             raise ValueError("epochs and learning rate must be positive")
         torch.manual_seed(seed)
@@ -404,6 +412,7 @@ def train(
                     validation_batch[6] if task == "pizza" else validation_batch[7],
                     class_names,
                     validation_batch[8] if task == "component" else None,
+                    dataset.canonical_class_ids,
                 )
                 for task in ("pizza", "component")
             }
