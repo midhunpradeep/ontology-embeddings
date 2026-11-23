@@ -115,8 +115,12 @@ def test_frequency_baseline_omits_zero_support_class_instead_of_scoring_negative
     }
     assert result["training_frequency"] == [None, 1.0]
     unsupported_metrics = result["metrics"]["per_class"]["unsupported-positive"]
-    assert unsupported_metrics["known_positive"] == 0
-    assert unsupported_metrics["not_applicable"] == 1
+    assert unsupported_metrics["known_positive"] == 1
+    assert unsupported_metrics["known_negative"] == 0
+    assert unsupported_metrics["unknown"] == 0
+    assert unsupported_metrics["not_applicable"] == 0
+    assert unsupported_metrics["scored"] is False
+    assert unsupported_metrics["status"] == "not_scored"
     assert unsupported_metrics["precision"] is None
     assert unsupported_metrics["recall"] is None
     assert unsupported_metrics["f1"] is None
@@ -124,3 +128,37 @@ def test_frequency_baseline_omits_zero_support_class_instead_of_scoring_negative
     assert supported_metrics["known_positive"] == 1
     assert supported_metrics["recall"] == 1
     assert validation_y.tolist() == [[1, 1]]
+
+
+def test_frequency_baseline_preserves_validation_support_when_training_support_is_zero():
+    train_y = torch.tensor([[0, 1]])
+    train_known = torch.tensor([[False, True]])
+    train_applicable = torch.ones_like(train_known)
+    validation_y = torch.tensor([[1, 1], [0, 0], [0, 0]])
+    validation_known = torch.tensor([[True, True], [False, True], [False, False]])
+    validation_applicable = torch.tensor(
+        [[True, True], [True, True], [False, True]], dtype=torch.bool
+    )
+
+    result = class_frequency_baseline(
+        train_y,
+        train_known,
+        train_applicable,
+        validation_y,
+        validation_known,
+        validation_applicable,
+        ["zero-training-support", "supported"],
+    )
+
+    unsupported = result["metrics"]["per_class"]["zero-training-support"]
+    assert unsupported["known_positive"] == 1
+    assert unsupported["known_negative"] == 0
+    assert unsupported["unknown"] == 1
+    assert unsupported["not_applicable"] == 1
+    assert unsupported["scored"] is False
+    assert unsupported["status"] == "not_scored"
+    assert result["baseline_classes"]["zero-training-support"]["prediction"] is None
+    assert unsupported["precision"] is None
+    assert unsupported["recall"] is None
+    assert unsupported["f1"] is None
+    assert result["metrics"]["per_class"]["supported"]["scored"] is True

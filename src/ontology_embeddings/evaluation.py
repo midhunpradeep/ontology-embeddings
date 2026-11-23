@@ -15,6 +15,7 @@ def membership_metrics(
     applicable: torch.Tensor,
     class_names: Sequence[str] | None = None,
     entity_parent_ids: Sequence[int] | None = None,
+    scoring_eligibility: torch.Tensor | None = None,
 ) -> dict[str, Any]:
     """Report exact known supports; metrics with zero denominator are ``None``."""
     predictions = predictions.bool()
@@ -31,6 +32,12 @@ def membership_metrics(
         raise ValueError("class_names length must match class dimension")
     if entity_parent_ids is not None and len(entity_parent_ids) != predictions.shape[0]:
         raise ValueError("entity_parent_ids length must match entity dimension")
+    if scoring_eligibility is None:
+        scoring_eligibility = torch.ones(n_classes, dtype=torch.bool)
+    scoring_eligibility = scoring_eligibility.bool().flatten()
+    if len(scoring_eligibility) != n_classes:
+        raise ValueError("scoring_eligibility length must match class dimension")
+    scoring_eligibility = scoring_eligibility.to(predictions.device)
     per_class: dict[str, Any] = {}
     totals = {key: 0 for key in ("tp", "fp", "fn")}
     defined_f1: list[float] = []
@@ -38,18 +45,23 @@ def membership_metrics(
     weighted_precision: list[tuple[int, float]] = []
     weighted_recall: list[tuple[int, float]] = []
     for index, name in enumerate(names):
-        valid = known[:, index] & applicable[:, index]
-        positive = valid & targets[:, index]
-        negative = valid & ~targets[:, index]
+        validation_valid = known[:, index] & applicable[:, index]
+        positive = validation_valid & targets[:, index]
+        negative = validation_valid & ~targets[:, index]
+        scored = bool(scoring_eligibility[index])
+        valid = validation_valid if scored else torch.zeros_like(validation_valid)
+        scored_positive = valid & targets[:, index]
+        scored_negative = valid & ~targets[:, index]
         predicted = predictions[:, index] & valid
-        tp = int((predicted & positive).sum())
-        fp = int((predicted & negative).sum())
-        fn = int((~predictions[:, index] & positive).sum())
+        tp = int((predicted & scored_positive).sum())
+        fp = int((predicted & scored_negative).sum())
+        fn = int((~predictions[:, index] & scored_positive).sum())
         pos, neg = int(positive.sum()), int(negative.sum())
+        scored_pos = int(scored_positive.sum())
         pred_pos = int(predicted.sum())
         precision = tp / pred_pos if pred_pos else None
-        recall = tp / pos if pos else None
-        f1_denominator = 2 * tp + fp + (pos - tp)
+        recall = tp / scored_pos if scored_pos else None
+        f1_denominator = 2 * tp + fp + (scored_pos - tp)
         f1 = 2 * tp / f1_denominator if f1_denominator else None
         unknown = int((applicable[:, index] & ~known[:, index]).sum())
         per_class[name] = {
@@ -58,6 +70,8 @@ def membership_metrics(
             "unknown": unknown,
             "not_applicable": int((~applicable[:, index]).sum()),
             "predicted_positive": pred_pos,
+            "scored": scored,
+            "status": "scored" if scored else "not_scored",
             "precision": precision,
             "recall": recall,
             "f1": f1,
@@ -79,13 +93,11 @@ def membership_metrics(
         totals["tp"] / (totals["tp"] + totals["fn"]) if totals["tp"] + totals["fn"] else None
     )
     micro_f1_denominator = 2 * totals["tp"] + totals["fp"] + totals["fn"]
-    micro_f1 = (
-        2 * totals["tp"] / micro_f1_denominator if micro_f1_denominator else None
-    )
+    micro_f1 = 2 * totals["tp"] / micro_f1_denominator if micro_f1_denominator else None
     f1_weight = sum(weight for weight, _ in weighted_f1)
     precision_weight = sum(weight for weight, _ in weighted_precision)
     recall_weight = sum(weight for weight, _ in weighted_recall)
-    eligible_entities = (known & applicable).any(dim=1)
+    eligible_entities = (known & applicable & scoring_eligibility.unsqueeze(0)).any(dim=1)
     eligible_pizza_count = int(eligible_entities.sum())
     if entity_parent_ids is not None:
         eligible_pizza_count = len(
@@ -144,7 +156,7 @@ def class_frequency_baseline(
     validation_parent_ids: Sequence[int] | None = None,
     class_ids: Sequence[int] | None = None,
 ) -> dict[str, Any]:
-    """Fit train-frequency constants; omit zero-support classes from validation scoring."""
+    """Fit train-frequency constants; retain validation support for unscored classes."""
     train_valid = train_known.bool() & train_applicable.bool()
     positives = (train_valid & train_targets.bool()).sum(dim=0)
     support = train_valid.sum(dim=0)
@@ -173,7 +185,6 @@ def class_frequency_baseline(
     predictions = torch.tensor(
         predictions_by_class, dtype=torch.bool, device=validation_targets.device
     ).expand_as(validation_targets)
-    scored_applicable = validation_applicable.bool() & supported.to(validation_applicable.device)
     return {
         "prediction_rule": "training_frequency >= 0.5 (ties positive); zero support is undefined",
         "training_positive": positives.tolist(),
@@ -184,8 +195,9 @@ def class_frequency_baseline(
             predictions,
             validation_targets,
             validation_known,
-            scored_applicable,
+            validation_applicable,
             names,
             validation_parent_ids,
+            scoring_eligibility=supported,
         ),
     }
