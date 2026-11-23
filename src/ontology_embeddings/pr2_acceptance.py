@@ -18,7 +18,6 @@ from .affine_smoke import load_train_validation
 from .dataset.constants import TOPPING_COLUMNS
 from .dataset.schema import ComponentRecord, DatasetRecord
 from .features import PIZZA_FEATURE_NAMES
-from .run_store import source_provenance
 from .training import train, train_shuffled_label_control
 
 
@@ -229,6 +228,10 @@ def run_acceptance(dataset_path: Path, *, evidence_dir: Path) -> dict[str, Any]:
     shutil.copy2(main_best, evidence_dir / "best.pt")
     main_best_entry = _best_validation_entry(main)
     control_best_entry = _best_validation_entry(control)
+    main_manifest = json.loads(
+        (Path(main["run_path"]) / "manifest.json").read_text(encoding="utf-8")
+    )
+    source = main_manifest["source"]
     payload = {
         "schema_version": "pr2-affine-acceptance-v1",
         "claim_scope": (
@@ -239,7 +242,7 @@ def run_acceptance(dataset_path: Path, *, evidence_dir: Path) -> dict[str, Any]:
             "No test JSONL rows/targets were parsed, passed to training, scored, or used for "
             "selection. The train/validation loader skips test lines before JSON parsing."
         ),
-        "source": source_provenance(Path(__file__).resolve().parents[2]),
+        "source": source,
         "dataset": {
             "path_local_only": str(dataset_path),
             "dataset_id": dataset.dataset_id,
@@ -307,7 +310,12 @@ def run_acceptance(dataset_path: Path, *, evidence_dir: Path) -> dict[str, Any]:
                     }
                     for item in main["history"]
                 ],
-                "best_checkpoint": "best.pt",
+                "checkpoint_references": {
+                    "best_run_relative": f"{main['run_id']}/checkpoints/best.pt",
+                    "latest_run_relative": f"{main['run_id']}/checkpoints/latest.pt",
+                    "best_sha256": _sha256(evidence_dir / "best.pt"),
+                    "best_selection": "minimum combined validation BCE",
+                },
             },
             "shuffled_training_label_control": {
                 "run_id": control["run_id"],
