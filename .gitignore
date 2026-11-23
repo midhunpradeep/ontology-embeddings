@@ -25,6 +25,7 @@ htmlcov/
 /artifacts/sources/
 /artifacts/datasets/
 /artifacts/runs/
+/artifacts/exports/
 /artifacts/checkpoints/
 /artifacts/cache/
 /artifacts/tmp/

@@ -1,0 +1,8 @@
+{
+  "bundle_sha256": "4ea0c2d76eb2ebd3c2b6933553219b84c1e496f075e1bfb591de95ee3aa64991",
+  "files": {
+    "README.md": "9b6b86db42315b61ae435d76000d1a8d25f97b55686fd5d23cce88f52238d846",
+    "best.pt": "ef3605e089da10f9d10b31afb225e50b59eb01ad50aefed0a080012b909dd92b",
+    "metrics.json": "a00407999ba74db9bd906f73089402c8d156410e69174bfbb14c55e08e03e35b"
+  }
+}

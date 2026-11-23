@@ -4,11 +4,11 @@ A small, installable research package for ontology-aware multi-label learning.
 
 ## Current scope
 
-This repository contains the migrated Pizzaïolo dataset subsystem: pinned generator adapter,
-preparation, ontology/vocabulary and source-label inference, prepared records, deterministic
-type-stratified splits, integrity validation, statistics, and dataset loading/subsets. It does
-not contain or implement any affine, Box, Town, CNN, training, experiment-logging, dashboard,
-or visualization subsystem.
+This repository contains the migrated Pizzaïolo dataset subsystem and an affine metadata-oracle
+baseline for joint pizza/component learning. The affine pipeline includes deterministic metadata
+features, a shared affine classifier, masked training/evaluation, local run records, and controls;
+its evidence is not image recognition or learned ontology geometry. Box, Town, CNN, detector,
+dashboard, and visualization work remain out of scope.
 
 The prepared schema preserves unknown-label masks, source audit metadata, component occurrence
 IDs, and original-pixel annotation geometry. Synthetic absences are known negatives only under

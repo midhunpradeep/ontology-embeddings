@@ -27,3 +27,8 @@ Keep generated datasets, runs, checkpoints, caches, and temporary outputs in the
 `artifacts/` locations documented in the README. Keep test fixtures under tracked test paths and
 committed prepared dataset examples under tracked `examples/`; neither belongs in generated-output
 locations.
+
+A narrow exception applies to durable milestone evidence: a selected checkpoint no larger than
+64 KiB may be tracked under `docs/experiments/<milestone>/` when the milestone requires it, the
+artifact is checksummed and described there, and all raw runs, datasets, latest checkpoints, and
+other generated outputs remain ignored under `artifacts/`.
