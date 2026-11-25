@@ -35,6 +35,9 @@ def test_restricted_and_unrestricted_contingencies_and_cross_task_violations():
     assert restricted["subsumption_a_to_b"]["violation_count"] == 1
     assert restricted["subsumption_a_to_b"]["conditional_violation_rate"] == 1
     unrestricted = pair["unrestricted"]["occurrence_weighted"]
+    assert unrestricted["subsumption_a_to_b"]["antecedent_support"] > 0
+    assert unrestricted["subsumption_a_to_b"]["vacuously_satisfied"] is False
+    assert unrestricted["subsumption_a_to_b"]["satisfied_on_observed_set"] is False
     assert unrestricted["contingency"] == {
         "a_positive_b_positive": 1,
         "a_positive_b_negative": 2,
@@ -59,6 +62,7 @@ def test_zero_support_is_vacuous_but_rate_undefined():
     assert implication["conditional_violation_rate"] is None
     assert implication["zero_antecedent_support"]
     assert implication["vacuously_satisfied"]
+    assert implication["satisfied_on_observed_set"]
     assert implication["undefined_reason"] == "zero_antecedent_support"
 
 

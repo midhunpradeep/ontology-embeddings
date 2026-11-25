@@ -9,6 +9,8 @@ from typing import Any, Sequence
 
 import numpy as np
 
+from .features import FEATURE_SCHEMA
+
 EXPECTED_DATASET_ID = "pizza-6a33710d13eb90fdde3e"
 EXPECTED_MANIFEST_ID = "c10c5d7966ba12badc644190191f76f94169f1d10c77aee0c971c861582455cd"
 EXPECTED_MANIFEST_SHA256 = "94be3c3617349bd6d48ce1eaa5afe53e60b62a3711c8bb366c631306430f0844"
@@ -48,6 +50,8 @@ def verify_historical_dataset(dataset: Any) -> dict[str, Any]:
         "declared_manifest_id": dataset.manifest_id,
         "manifest_file_sha256": dataset.dataset_manifest_sha256,
         "class_manifest_sha256": dataset.class_manifest_sha256,
+        "feature_schema_sha256": FEATURE_SCHEMA["sha256"],
+        "encoder_device": "cpu",
         "splits": result,
         "test_records_loaded_for_integrity_only": sum(
             record.split == "test" for record in dataset.records
@@ -89,7 +93,8 @@ def _rates(table: dict[str, int], eligible: int) -> dict[str, Any]:
             "denominator": support_a,
             "conditional_violation_rate": pn / support_a if support_a else None,
             "zero_antecedent_support": support_a == 0,
-            "vacuously_satisfied": pn == 0,
+            "vacuously_satisfied": support_a == 0,
+            "satisfied_on_observed_set": pn == 0,
             "undefined_reason": "zero_antecedent_support" if support_a == 0 else None,
         },
         "subsumption_b_to_a": {
@@ -98,7 +103,8 @@ def _rates(table: dict[str, int], eligible: int) -> dict[str, Any]:
             "denominator": support_b,
             "conditional_violation_rate": np_ / support_b if support_b else None,
             "zero_antecedent_support": support_b == 0,
-            "vacuously_satisfied": np_ == 0,
+            "vacuously_satisfied": support_b == 0,
+            "satisfied_on_observed_set": np_ == 0,
             "undefined_reason": "zero_antecedent_support" if support_b == 0 else None,
         },
         "disjointness": {
