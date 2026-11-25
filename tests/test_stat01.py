@@ -1,11 +1,14 @@
 import shutil
+import xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
+from types import SimpleNamespace
 
 from ontology_embeddings.affine_smoke import load_train_validation
 from ontology_embeddings.dataset.ontology import OntologySnapshot
 from ontology_embeddings.stat01 import (
     Observation,
+    _special_entities,
     _binary_stats,
     _eligible_weights,
     _weighted,
@@ -139,4 +142,37 @@ def test_supported_named_hierarchy_and_disjointness():
     closure, disjoint = ontology_relations(ontology)
     assert ("American", "Pizza") in closure
     assert ("AnchovyTopping", "PrawnTopping") in disjoint
+    # The all-disjoint group includes these named members; duplicates from any
+    # binary source remain a single canonical unordered relation.
+    assert ("GreenPepperTopping", "JalapenoPepperTopping") in disjoint
+    assert ("OliveTopping", "SpinachTopping") in disjoint
+    assert ("American", "Country") in disjoint  # inherited from Pizza / Country
+    assert len(disjoint) == len(set(disjoint))
     assert all(a < b for a, b in disjoint)
+
+    # A binary source overlapping a group-expanded pair does not duplicate it.
+    binary = ET.SubElement(
+        ontology.class_elements["GreenPepperTopping"],
+        "{http://www.w3.org/2002/07/owl#}disjointWith",
+    )
+    binary.set(
+        "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}resource",
+        "#JalapenoPepperTopping",
+    )
+    assert ontology_relations(ontology)[1] == disjoint
+
+
+def test_special_class_entities_use_level_specific_denominators():
+    record = SimpleNamespace(
+        sample_id="p1",
+        pizza_targets=[1],
+        pizza_known_mask=[1],
+        components=[
+            SimpleNamespace(component_id="c1", ontology_targets=[1], ontology_known_mask=[1]),
+            SimpleNamespace(component_id="c2", ontology_targets=[0], ontology_known_mask=[1]),
+        ],
+    )
+    assert len(_special_entities([record], "pizza")) == 1
+    components = _special_entities([record], "component")
+    assert len(components) == 2
+    assert all("/" in ref for ref, _, _ in components)

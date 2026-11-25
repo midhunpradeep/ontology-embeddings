@@ -10,6 +10,7 @@ import json
 import math
 import random
 import subprocess
+import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -254,6 +255,24 @@ def ontology_relations(
             other = iri.rsplit("#", 1)[-1].rsplit("/", 1)[-1] if iri else ""
             if other in ontology.class_names:
                 direct.add(tuple(sorted((name, other))))
+    # owl:AllDisjointClasses is represented by an anonymous axiom whose
+    # owl:members collection can contain named class descriptions.
+    owl = "http://www.w3.org/2002/07/owl#"
+    rdf = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    names_by_iri = {iri: name for name, iri in ontology.class_iris.items()}
+    root = ET.parse(ontology.path).getroot()
+    for axiom in root.iter(f"{{{owl}}}AllDisjointClasses"):
+        members = axiom.find(f"{{{owl}}}members")
+        if members is None:
+            continue
+        names = set()
+        for member in members:
+            reference = member.get(f"{{{rdf}}}about") or member.get(f"{{{rdf}}}resource")
+            if reference:
+                iri = ontology._resolved_iri(reference)
+                if iri in names_by_iri:
+                    names.add(names_by_iri[iri])
+        direct.update(tuple(sorted(pair)) for pair in itertools.combinations(names, 2))
     disjoint = set()
     for a in ontology.class_names:
         for b in ontology.class_names:
@@ -742,13 +761,32 @@ def _json_default(obj):
     raise TypeError(type(obj).__name__)
 
 
+def _special_entities(records, level: str):
+    if level == "pizza":
+        return [
+            (record.sample_id, record.pizza_targets, record.pizza_known_mask)
+            for record in records
+        ]
+    if level == "component":
+        return [
+            (
+                f"{record.sample_id}/{component.component_id}",
+                component.ontology_targets,
+                component.ontology_known_mask,
+            )
+            for record in records
+            for component in record.components
+        ]
+    raise ValueError(f"Unknown entity level: {level}")
+
+
 def _write_csv(path: Path, rows: list[dict[str, Any]]):
     if not rows:
         path.write_text("")
         return
     fields = list(dict.fromkeys(k for row in rows for k in row))
     with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields)
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
         w.writeheader()
         w.writerows(rows)
 
@@ -812,12 +850,12 @@ def run_audit(data: Path, out: Path, *, allow_noninitial: bool = False) -> dict[
         "ontology_reference_fragment": {
             "subclass": "Explicit named rdfs:subClassOf edges and their transitive named closure.",
             "disjointness": (
-                "Explicit named owl:disjointWith edges inherited through the named "
-                "subclass closure."
+                "Explicit named owl:disjointWith edges and pairwise expansions of named-member "
+                "owl:AllDisjointClasses axioms, inherited through the named subclass closure."
             ),
             "unsupported": (
-                "Not a complete OWL reasoner; equivalent classes, restrictions, property "
-                "axioms, and owl:AllDisjointClasses are not extracted as reference relations."
+                "Not a complete OWL reasoner; equivalent classes, restrictions, and property "
+                "axioms are not extracted as reference relations."
             ),
             "named_subclass_pair_count": len(relations[0]),
             "inherited_or_explicit_disjoint_pair_count": len(relations[1]),
@@ -853,18 +891,7 @@ def run_audit(data: Path, out: Path, *, allow_noninitial: bool = False) -> dict[
                 for item in json.loads(vocab_bytes)["classes"]
                 if item.get("fixed_positive") or item.get("unsupported")
             ]
-            entities = []
-            for record in records:
-                entities.append((record.sample_id, record.pizza_targets, record.pizza_known_mask))
-                if level == "component":
-                    entities.extend(
-                        (
-                            f"{record.sample_id}/{component.component_id}",
-                            component.ontology_targets,
-                            component.ontology_known_mask,
-                        )
-                        for component in record.components
-                    )
+            entities = _special_entities(records, level)
             for item in special_entries:
                 cid = item["class_id"]
                 targets = [target[cid] for _, target, _ in entities]
