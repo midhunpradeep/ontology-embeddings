@@ -1,0 +1,32 @@
+{
+  "bounded": {
+    "first_epoch_completed_by_elapsed_seconds": 30.156108614,
+    "gpu_memory_observed_bytes_approx": 783286272,
+    "gpu_utilization_observed_percent_range": [
+      19,
+      28
+    ],
+    "launcher_monotonic_seconds": 1332.547620175,
+    "run_id": "20261125T212135-1c0e34f5174a",
+    "steady_state_observed_epoch_seconds": [
+      20.1,
+      25.1
+    ]
+  },
+  "first_epoch_values_are_observation_upper_bounds_not_exact_boundaries": true,
+  "preparation_cuda0_seconds": 5.507014903,
+  "unbounded": {
+    "first_epoch_completed_by_elapsed_seconds": 18.0,
+    "gpu_memory_observed_bytes_approx": 783286272,
+    "gpu_utilization_observed_percent_range": [
+      19,
+      28
+    ],
+    "launcher_monotonic_seconds": 1284.86093559,
+    "run_id": "20261125T205910-8eac8a31db0a",
+    "steady_state_observed_epoch_seconds": [
+      19.3,
+      24.0
+    ]
+  }
+}

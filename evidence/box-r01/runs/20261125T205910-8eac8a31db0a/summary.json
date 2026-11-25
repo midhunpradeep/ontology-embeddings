@@ -1,0 +1,30 @@
+{
+  "activation": "identity",
+  "best_checkpoint_reload_predictions_equivalent": true,
+  "best_mean_task_micro_f1": {
+    "component_micro_f1": 1.0,
+    "epoch": 45,
+    "mean": 0.99349076597033,
+    "pizza_micro_f1": 0.98698153194066
+  },
+  "checkpoint_paths": {
+    "best": "checkpoints/best.pt",
+    "initial": "checkpoints/initial.pt",
+    "latest": "checkpoints/latest.pt"
+  },
+  "checkpoint_selection": "minimum combined native validation loss; earliest tie",
+  "domain": "unbounded",
+  "epochs_completed": 60,
+  "run_id": "20261125T205910-8eac8a31db0a",
+  "selected_best": {
+    "component_micro_f1": 1.0,
+    "epoch": 45,
+    "pizza_micro_f1": 0.98698153194066,
+    "train_loss": 0.005884792655706406,
+    "validation_component_loss": 0.0019231591140851378,
+    "validation_loss": 0.01507347822189331,
+    "validation_pizza_loss": 0.02822379767894745
+  },
+  "source_sha": "0e8a996794b788e45b96f108e79a03dca2843e4e",
+  "status": "completed"
+}

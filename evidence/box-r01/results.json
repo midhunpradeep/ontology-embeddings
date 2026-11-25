@@ -1,0 +1,88 @@
+{
+  "acceptance_note": "Execution evidence only; final indexed controls and A/B/C acceptance certification were not performed.",
+  "dataset": {
+    "class_vocabulary_sha256": "e803479520664a5de823848c41a29f45a70f6d2a755049a9be14b52312cddd54",
+    "dataset_id": "pizza-6a33710d13eb90fdde3e",
+    "declared_manifest_id": "c10c5d7966ba12badc644190191f76f94169f1d10c77aee0c971c861582455cd",
+    "raw_manifest_sha256": "94be3c3617349bd6d48ce1eaa5afe53e60b62a3711c8bb366c631306430f0844",
+    "test_count_sealed": 240,
+    "train_count": 720,
+    "train_selection_sha256": "d9f7ef8f7ea3d20def144c052c8b9d3ff88c538036798a780e36f55bee30e219",
+    "validation_count": 240,
+    "validation_selection_sha256": "a9fe9f1b18c635f8ab1067a65d926541b64da7734c59fefc66a00aa780fe9c0c"
+  },
+  "references": {
+    "frequency_baseline": {
+      "component_micro_f1": 0.7319846848,
+      "pizza_micro_f1": 0.6475535168
+    },
+    "historical_affine": {
+      "component_micro_f1": 1.0,
+      "pizza_micro_f1": 0.9894482967,
+      "unseen_signature_pizza_micro_f1": 0.9737434359
+    }
+  },
+  "runs": [
+    {
+      "activation": "identity",
+      "best_checkpoint_reload_predictions_equivalent": true,
+      "best_mean_task_micro_f1": {
+        "component_micro_f1": 1.0,
+        "epoch": 45,
+        "mean": 0.99349076597033,
+        "pizza_micro_f1": 0.98698153194066
+      },
+      "checkpoint_paths": {
+        "best": "checkpoints/best.pt",
+        "initial": "checkpoints/initial.pt",
+        "latest": "checkpoints/latest.pt"
+      },
+      "checkpoint_selection": "minimum combined native validation loss; earliest tie",
+      "domain": "unbounded",
+      "epochs_completed": 60,
+      "run_id": "20261125T205910-8eac8a31db0a",
+      "selected_best": {
+        "component_micro_f1": 1.0,
+        "epoch": 45,
+        "pizza_micro_f1": 0.98698153194066,
+        "train_loss": 0.005884792655706406,
+        "validation_component_loss": 0.0019231591140851378,
+        "validation_loss": 0.01507347822189331,
+        "validation_pizza_loss": 0.02822379767894745
+      },
+      "source_sha": "0e8a996794b788e45b96f108e79a03dca2843e4e",
+      "status": "completed"
+    },
+    {
+      "activation": "tanh",
+      "best_checkpoint_reload_predictions_equivalent": true,
+      "best_mean_task_micro_f1": {
+        "component_micro_f1": 0.9995236835141572,
+        "epoch": 59,
+        "mean": 0.9934479511978482,
+        "pizza_micro_f1": 0.9873722188815394
+      },
+      "checkpoint_paths": {
+        "best": "checkpoints/best.pt",
+        "initial": "checkpoints/initial.pt",
+        "latest": "checkpoints/latest.pt"
+      },
+      "checkpoint_selection": "minimum combined native validation loss; earliest tie",
+      "domain": "bounded",
+      "epochs_completed": 60,
+      "run_id": "20261125T212135-1c0e34f5174a",
+      "selected_best": {
+        "component_micro_f1": 0.9995236835141572,
+        "epoch": 54,
+        "pizza_micro_f1": 0.9849215922798552,
+        "train_loss": 0.018929442390799522,
+        "validation_component_loss": 0.01233005616813898,
+        "validation_loss": 0.022922953590750694,
+        "validation_pizza_loss": 0.03351585194468498
+      },
+      "source_sha": "0e8a996794b788e45b96f108e79a03dca2843e4e",
+      "status": "completed"
+    }
+  ],
+  "source_sha": "0e8a996794b788e45b96f108e79a03dca2843e4e"
+}

@@ -1,0 +1,21 @@
+{
+  "runs": {
+    "bounded": "20261125T212135-1c0e34f5174a",
+    "unbounded": "20261125T205910-8eac8a31db0a"
+  },
+  "verification": {
+    "adapter_sha256": {
+      "component_adapter.bias": "ce12ce72cc5a8164bd550ed9bfcbbc342ffc1b4757300cd7da9ad10fdaa8ba14",
+      "component_adapter.weight": "6fcd94473c0c9950fff2c3362f509162f950f1839ef8b9ac4cd037e68a3fba40",
+      "pizza_adapter.bias": "3efd6967ce83c48e36b2945483f899bed50a021c7a4ee53c7508ee8fe58e497f",
+      "pizza_adapter.weight": "347eaf1a19743df90e321fa7f076b149eb76ebee63ee42b970dd8fc2db2aa2bf"
+    },
+    "max_absolute_error_by_domain": {
+      "bounded": 0.0,
+      "unbounded": 5.960464477539063e-08
+    },
+    "reconstruction_tolerance_abs": 2e-05,
+    "requested_bounds_sha256": "00523b9e69d0e131d4e9d9124e660b1326b346f9c54d58362bd23b9e842438e6",
+    "status": "passed"
+  }
+}

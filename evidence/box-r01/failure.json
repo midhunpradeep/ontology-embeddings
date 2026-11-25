@@ -1,0 +1,8 @@
+{
+  "domain": "unbounded",
+  "error": "ValueError: invalid shared adapter tensor pizza_adapter.weight",
+  "resolution": "Explicit cuda:0 preparation and invocation; no source change.",
+  "run_id": "20261125T205722-f01807b66750",
+  "source_sha": "0e8a996794b788e45b96f108e79a03dca2843e4e",
+  "status": "failed"
+}

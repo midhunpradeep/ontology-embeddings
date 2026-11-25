@@ -1,0 +1,26 @@
+{
+  "checkpoints/best.pt": {
+    "bytes": 70200,
+    "sha256": "4cefd5eb9bae0ccad138c0303c501239a5a6ce065d0231e4a7f602c5449a2dd8"
+  },
+  "checkpoints/initial.pt": {
+    "bytes": 70172,
+    "sha256": "c79093b745c202c4be49a33681f250a80956a4750b4c867072873e9a7bdbd550"
+  },
+  "checkpoints/latest.pt": {
+    "bytes": 70160,
+    "sha256": "cff330a233de02222763a0a8db56e4627c13499c93c3eee87a571e52f1dcded9"
+  },
+  "metrics.jsonl.gz": {
+    "bytes": 705211,
+    "sha256": "a22c92559cacbda916fdb4399753fb6bc185da0b6792c35d4da7fc2eb8845d0d"
+  },
+  "run.json": {
+    "bytes": 149251,
+    "sha256": "21c958097c0a0b95edc0f82239fcc2176aa00351ba2d7e57e66f7f8ba7b43c84"
+  },
+  "summary.json": {
+    "bytes": 950,
+    "sha256": "f479d725cb3089fa2fe17e1c3b77c87f472a8e60363cdee2f360ba6ba3bca572"
+  }
+}
