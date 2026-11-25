@@ -41,7 +41,7 @@ lake build
 lake env lean OntologyEmbeddings/Semantics.lean
 ```
 
-The `.lake/` directory contains downloaded packages, compiled artifacts, and caches and is excluded from Git. If provisioning the toolchain manually, install it with `elan toolchain install leanprover/lean4:v4.27.0` before running the commands above.
+The `.lake/` directory contains downloaded packages, compiled artifacts, and caches and is excluded from Git. In this bootstrap, the precompiled cache resolved the targeted `Mathlib.Data.Set.*` imports used here; it did not include the umbrella `Mathlib.olean`, so prefer targeted imports rather than `import Mathlib` unless you intentionally build that umbrella module. If provisioning the toolchain manually, install it with `elan toolchain install leanprover/lean4:v4.27.0` before running the commands above.
 
 ## Extending this foundation
 
