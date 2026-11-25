@@ -1,0 +1,25 @@
+partition,entity_type,class_id,class_name,status,entity_occurrences,target_positive_count,target_negative_count,known_mask_count,unknown_mask_count,interpretation
+train,pizza,9,DomainThing,fixed_positive,720,720,0,720,0,metadata only; excluded from trainable-class supervision statistics
+train,pizza,19,Hot,unsupported,720,0,720,0,720,metadata only; excluded from trainable-class supervision statistics
+train,pizza,23,Medium,unsupported,720,0,720,0,720,metadata only; excluded from trainable-class supervision statistics
+train,pizza,24,Mild,unsupported,720,0,720,0,720,metadata only; excluded from trainable-class supervision statistics
+train,pizza,52,Spiciness,unsupported,720,0,720,0,720,metadata only; excluded from trainable-class supervision statistics
+train,pizza,60,ValuePartition,unsupported,720,0,720,0,720,metadata only; excluded from trainable-class supervision statistics
+train,component,9,DomainThing,fixed_positive,13058,13058,0,13058,0,metadata only; excluded from trainable-class supervision statistics
+train,component,19,Hot,unsupported,13058,0,13058,0,13058,metadata only; excluded from trainable-class supervision statistics
+train,component,23,Medium,unsupported,13058,0,13058,0,13058,metadata only; excluded from trainable-class supervision statistics
+train,component,24,Mild,unsupported,13058,0,13058,0,13058,metadata only; excluded from trainable-class supervision statistics
+train,component,52,Spiciness,unsupported,13058,0,13058,0,13058,metadata only; excluded from trainable-class supervision statistics
+train,component,60,ValuePartition,unsupported,13058,0,13058,0,13058,metadata only; excluded from trainable-class supervision statistics
+validation,pizza,9,DomainThing,fixed_positive,240,240,0,240,0,metadata only; excluded from trainable-class supervision statistics
+validation,pizza,19,Hot,unsupported,240,0,240,0,240,metadata only; excluded from trainable-class supervision statistics
+validation,pizza,23,Medium,unsupported,240,0,240,0,240,metadata only; excluded from trainable-class supervision statistics
+validation,pizza,24,Mild,unsupported,240,0,240,0,240,metadata only; excluded from trainable-class supervision statistics
+validation,pizza,52,Spiciness,unsupported,240,0,240,0,240,metadata only; excluded from trainable-class supervision statistics
+validation,pizza,60,ValuePartition,unsupported,240,0,240,0,240,metadata only; excluded from trainable-class supervision statistics
+validation,component,9,DomainThing,fixed_positive,4268,4268,0,4268,0,metadata only; excluded from trainable-class supervision statistics
+validation,component,19,Hot,unsupported,4268,0,4268,0,4268,metadata only; excluded from trainable-class supervision statistics
+validation,component,23,Medium,unsupported,4268,0,4268,0,4268,metadata only; excluded from trainable-class supervision statistics
+validation,component,24,Mild,unsupported,4268,0,4268,0,4268,metadata only; excluded from trainable-class supervision statistics
+validation,component,52,Spiciness,unsupported,4268,0,4268,0,4268,metadata only; excluded from trainable-class supervision statistics
+validation,component,60,ValuePartition,unsupported,4268,0,4268,0,4268,metadata only; excluded from trainable-class supervision statistics
