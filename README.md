@@ -15,6 +15,13 @@ IDs, and original-pixel annotation geometry. Synthetic absences are known negati
 the pinned generator's prepared-data contract; they are not a general closed-world interpretation
 of OWL.
 
+## Formal mathematics
+
+A standalone Lean 4 + Mathlib project lives in [`formal/`](formal/). It records
+representation-independent set semantics, a sustainable verification command, theorem ledger,
+and human/agent proof workflow. Start with [`formal/README.md`](formal/README.md); formal
+results are not claims that the Python implementation satisfies those semantics.
+
 ## Install and validate the fixture
 
 Requires Python 3.11 or 3.12.
