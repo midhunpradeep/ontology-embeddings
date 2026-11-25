@@ -10,13 +10,21 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch
 
 from .box import box_membership, validate_endpoints
 from .box_training import BoxMultiLabelModel
 from .dataset.constants import FIXED_POSITIVE_CLASS
+from .dataset.image_data import PreparedDataset
 from .dataset.ontology import OntologySnapshot, build_class_vocabulary
-from .features import COMPONENT_FEATURE_NAMES, PIZZA_FEATURE_NAMES
+from .features import (
+    COMPONENT_FEATURE_NAMES,
+    PIZZA_FEATURE_NAMES,
+    component_features,
+    pizza_features,
+)
+from .observed_relations import evaluate_observed_population, split_observed_records
 from .relation_geometry import directed, unordered
 
 
@@ -69,8 +77,170 @@ def _reference(
     return sub, dis
 
 
+def _encode_observed_population(
+    model: BoxMultiLabelModel,
+    records: list[Any],
+    dataset: PreparedDataset,
+    entity: str,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    classes: list[dict[str, Any]],
+) -> dict[str, Any]:
+    class_ids = list(model.class_ids)
+    if entity == "pizza":
+        features = [pizza_features(record) for record in records]
+        known_full = [record.pizza_known_mask for record in records]
+        applicable = set(dataset.pizza_supervision_class_ids)
+    else:
+        components = [component for record in records for component in record.components]
+        features = [component_features(component) for component in components]
+        known_full = [component.ontology_known_mask for component in components]
+        applicable = set(dataset.component_supervision_class_ids)
+    feature_width = len(PIZZA_FEATURE_NAMES) if entity == "pizza" else len(COMPONENT_FEATURE_NAMES)
+    x = torch.tensor(features, dtype=torch.float32, device=lower.device).reshape(-1, feature_width)
+    with torch.inference_mode():
+        points = model.encode(x, entity)
+        # Exact raw geometric predictions are never masked by labels or task applicability.
+        membership = box_membership(
+            points, lower, upper, domain=model.domain, epsilon=model.epsilon
+        )
+    points_np = points.cpu().numpy()
+    membership_np = membership.cpu().numpy()
+    if known_full:
+        known = np.asarray(known_full, dtype=bool)[:, class_ids]
+    else:
+        known = np.empty((0, len(class_ids)), dtype=bool)
+    eligible = known & np.asarray([class_id in applicable for class_id in class_ids])[None, :]
+    return evaluate_observed_population(points_np, membership_np, eligible, classes)
+
+
+def _observed_evaluation(
+    model: BoxMultiLabelModel,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    dataset: PreparedDataset,
+    classes: list[dict[str, Any]],
+    subclass_reference: set[tuple[str, str]],
+    disjoint_reference: set[tuple[str, str]],
+    learned_subsumption: set[tuple[str, str]],
+    learned_disjointness: set[tuple[str, str]],
+) -> dict[str, Any]:
+    if (
+        dataset.canonical_class_ids != model.class_ids
+        or dataset.class_manifest_sha256 != model.vocabulary_sha256
+        or dataset.class_names != model.class_names
+        or dataset.class_iris != model.class_iris
+    ):
+        raise ValueError("observed dataset vocabulary differs from checkpoint identity")
+    splits = split_observed_records(dataset.records)
+    result = {}
+    occupancy_by_class: dict[str, dict[str, Any]] = {str(c["class_id"]): {} for c in classes}
+    for split in ("train", "validation"):
+        result[split] = {}
+        for entity in ("pizza", "component"):
+            population = _encode_observed_population(
+                model, splits[split], dataset, entity, lower, upper, classes
+            )
+            pair_by_ids = {(row["a_id"], row["b_id"]): row for row in population["pairs"]}
+            name_to_id = {c["name"]: c["class_id"] for c in classes}
+            for child, parent in learned_subsumption:
+                a_id, b_id = name_to_id[child], name_to_id[parent]
+                row = pair_by_ids[tuple(sorted((a_id, b_id)))]
+                directed_key = "subsumption_a_to_b" if row["a_id"] == a_id else "subsumption_b_to_a"
+                if row["unrestricted"]["occurrence_weighted"][directed_key]["violation_count"]:
+                    raise AssertionError("observed point violates a globally contained BOX pair")
+            for left_name, right_name in learned_disjointness:
+                row = pair_by_ids[tuple(sorted((name_to_id[left_name], name_to_id[right_name])))]
+                if row["unrestricted"]["occurrence_weighted"]["disjointness"]["violation_count"]:
+                    raise AssertionError("observed point violates globally disjoint BOX pair")
+            zero_subclass_support: dict[str, list[dict[str, str]]] = {
+                "supervision_restricted": [],
+                "unrestricted": [],
+            }
+            zero_disjoint_eligibility: dict[str, list[dict[str, str]]] = {
+                "supervision_restricted": [],
+                "unrestricted": [],
+            }
+            missed_global_subclass_evidence = []
+            for child, parent in sorted(subclass_reference):
+                left, right = name_to_id[child], name_to_id[parent]
+                key = tuple(sorted((left, right)))
+                row = pair_by_ids[key]
+                stat_key = "subsumption_a_to_b" if row["a_id"] == left else "subsumption_b_to_a"
+                relation_evidence = {"child_name": child, "parent_name": parent}
+                if (child, parent) not in learned_subsumption:
+                    relation_evidence["observed"] = {
+                        view_name: {
+                            unit_name: {
+                                key: row[view_name][unit_name][stat_key][key]
+                                for key in (
+                                    "antecedent_support",
+                                    "violation_count",
+                                    "conditional_violation_rate",
+                                    "zero_antecedent_support",
+                                )
+                            }
+                            for unit_name in ("occurrence_weighted", "distinct_embedding")
+                        }
+                        for view_name in ("supervision_restricted", "unrestricted")
+                    }
+                    missed_global_subclass_evidence.append(relation_evidence)
+                for view_name in ("supervision_restricted", "unrestricted"):
+                    support = row[view_name]["occurrence_weighted"][stat_key]["antecedent_support"]
+                    if support == 0:
+                        zero_subclass_support[view_name].append(relation_evidence)
+
+            missed_global_disjoint_evidence = []
+            for left_name, right_name in sorted(disjoint_reference):
+                ids = tuple(sorted((name_to_id[left_name], name_to_id[right_name])))
+                row = pair_by_ids[ids]
+                relation_evidence = {"a_name": left_name, "b_name": right_name}
+                if tuple(sorted((left_name, right_name))) not in learned_disjointness:
+                    relation_evidence["observed"] = {
+                        view_name: {
+                            unit_name: {
+                                key: row[view_name][unit_name]["disjointness"][key]
+                                for key in ("violation_count", "denominator", "violation_rate")
+                            }
+                            for unit_name in ("occurrence_weighted", "distinct_embedding")
+                        }
+                        for view_name in ("supervision_restricted", "unrestricted")
+                    }
+                    missed_global_disjoint_evidence.append(relation_evidence)
+                for view_name in ("supervision_restricted", "unrestricted"):
+                    support_count = row[view_name]["occurrence_weighted"]["eligible_entity_count"]
+                    if support_count == 0:
+                        zero_disjoint_eligibility[view_name].append(relation_evidence)
+            population["reference_support"] = {
+                "subclass_relations_with_zero_observed_antecedent_support": zero_subclass_support,
+                "disjoint_relations_with_zero_eligible_entities": zero_disjoint_eligibility,
+                "global_subclass_relations_missed_by_geometry": missed_global_subclass_evidence,
+                "global_disjoint_relations_missed_by_geometry": missed_global_disjoint_evidence,
+            }
+            for class_id, occupancy in population["class_occupancy"].items():
+                occupancy_by_class[class_id][f"{split}_{entity}"] = {
+                    key: occupancy[key]
+                    for key in (
+                        "positive_occurrences",
+                        "occurrence_count",
+                        "occurrence_fraction",
+                        "positive_distinct_embeddings",
+                        "distinct_embedding_count",
+                        "distinct_embedding_fraction",
+                    )
+                }
+            result[split][entity] = population
+    return {"populations": result, "class_occupancy": occupancy_by_class}
+
+
 def evaluate_checkpoint(
-    checkpoint: Path, *, evidence_root: Path, run_id: str, label: str
+    checkpoint: Path,
+    *,
+    evidence_root: Path,
+    run_id: str,
+    label: str,
+    observed_dataset: PreparedDataset | None = None,
+    observed_dataset_identity: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     digest = _sha(checkpoint)
     manifest = evidence_root / "SHA256SUMS"
@@ -311,6 +481,15 @@ def evaluate_checkpoint(
             ),
         }
 
+    observed = (
+        _observed_evaluation(
+            model, lo_t, hi_t, observed_dataset, trainable, sub, dis, predsub, preddis
+        )
+        if observed_dataset is not None
+        else None
+    )
+    if observed_dataset is not None and observed_dataset_identity is None:
+        raise ValueError("verified dataset identity metadata is required for observed output")
     per_class = []
     for c in trainable:
         k = ids.index(c["class_id"])
@@ -360,7 +539,11 @@ def evaluate_checkpoint(
                 "bounded_domain_volume_denominator": (
                     2**model.latent_dim if model.domain == "bounded" else None
                 ),
-                "observed_point_occupancy": None,
+                "observed_point_occupancy": (
+                    observed["class_occupancy"][str(c["class_id"])]
+                    if observed is not None
+                    else None
+                ),
                 "strictly_contained_classes": len(contained) - len(equivalent),
                 "strict_containing_classes": len(containing) - len(equivalent),
                 "equivalent_classes": len(equivalent),
@@ -380,7 +563,7 @@ def evaluate_checkpoint(
         check=True,
     ).stdout.strip()
     return {
-        "schema": "rel-01-v1",
+        "schema": "rel-01-v2" if observed is not None else "rel-01-v1",
         "metadata": {
             "label": label,
             "run_id": run_id,
@@ -389,7 +572,9 @@ def evaluate_checkpoint(
             "model_source_revision": source["commit_sha"],
             "model_source_dirty": source.get("dirty"),
             "evaluator_revision": revision,
-            "dataset": {
+            "dataset": observed_dataset_identity
+            if observed_dataset_identity is not None
+            else {
                 "dataset_id": dataset_identity["dataset_id"],
                 "declared_manifest_id": dataset_identity["declared_manifest_id"],
                 "manifest_file_sha256": dataset_identity["manifest_identity_sha256"],
@@ -415,7 +600,9 @@ def evaluate_checkpoint(
                 "stored float32 endpoints promoted to float64; exact comparisons; "
                 "closed boundaries; ratios via log volumes"
             ),
-            "status": "global_complete_observed_blocked_dataset_unavailable",
+            "status": "global_and_observed_complete"
+            if observed is not None
+            else "global_complete_observed_not_requested",
         },
         "summary": {
             "relations": counts,
@@ -461,6 +648,7 @@ def evaluate_checkpoint(
         },
         "classes": per_class,
         "pairs": pairs,
+        "observed": observed,
         "reference": {
             "subclass": [list(x) for x in sorted(sub)],
             "disjoint": [list(x) for x in sorted(dis)],
