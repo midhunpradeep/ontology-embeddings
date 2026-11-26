@@ -52,6 +52,16 @@ def test_restricted_and_unrestricted_contingencies_and_cross_task_violations():
         "eligible_entity_count": 2,
     }
     filtered = _aggregate_pair_records(result["pairs"], {(7, 12)}, {(7, 12)})
+    occurrence = filtered["measurements"]["unrestricted"]["occurrence_weighted"]
+    distinct = filtered["measurements"]["unrestricted"]["distinct_embedding"]
+    assert (
+        occurrence["subsumption_violation_count"],
+        occurrence["subsumption_antecedent_support"],
+    ) == (2, 3)
+    assert (
+        distinct["subsumption_violation_count"],
+        distinct["subsumption_antecedent_support"],
+    ) == (1, 2)
     assert filtered["violations_outside_joint_supervision"]["occurrence_weighted"] == {
         "reference_subsumption_violation_count": 1,
         "reference_disjointness_violation_count": 1,
