@@ -1,0 +1,106 @@
+{
+  "schema": "box-pr3-acceptance-closeout-v1",
+  "evidence_lineage": "The immutable BOX-R01 evidence bundle is execution evidence and correctly states that indexed controls/final A-B-C certification had not yet been performed when it was published. This later closeout adds the four indexed controls and source-matched finalizer output; it does not rewrite the historical R01 note.",
+  "scientific_acceptance": {
+    "A_mathematical_numerical": "passed",
+    "B_controls_and_joint_learning": "passed",
+    "C_predictive_vs_train_frequency_baselines": "passed",
+    "scope": "preliminary single-seed metadata-oracle result; not definitive comparative thesis evidence"
+  },
+  "original_training_provenance": {
+    "source_sha": "0e8a996794b788e45b96f108e79a03dca2843e4e",
+    "source_clean": true,
+    "dataset_id": "pizza-6a33710d13eb90fdde3e",
+    "declared_manifest_id": "c10c5d7966ba12badc644190191f76f94169f1d10c77aee0c971c861582455cd",
+    "raw_manifest_file_sha256": "94be3c3617349bd6d48ce1eaa5afe53e60b62a3711c8bb366c631306430f0844",
+    "vocabulary_sha256": "e803479520664a5de823848c41a29f45a70f6d2a755049a9be14b52312cddd54",
+    "split_counts": {"train": 720, "validation": 240, "sealed_test": 240},
+    "train_selection_sha256": "d9f7ef8f7ea3d20def144c052c8b9d3ff88c538036798a780e36f55bee30e219",
+    "validation_selection_sha256": "a9fe9f1b18c635f8ab1067a65d926541b64da7734c59fefc66a00aa780fe9c0c",
+    "test_partition_predictive_access": "not decoded, tuned, selected, or evaluated",
+    "paired_initialization_sha256": "8b362da43bd8fdd96088037f5b0dda34089e825054f8e2855c36323e20caeba9",
+    "paired_adapter_hashes_equal": true,
+    "physical_bound_reconstruction_max_abs_error": {"bounded": 0.0, "unbounded": 5.960464477539063e-08},
+    "physical_bound_reconstruction_tolerance": 0.00002,
+    "runtime": {"python": "3.12.0", "pytorch": "2.5.1+cu124", "cuda": "12.4", "device": "NVIDIA GeForce RTX 2060"},
+    "shared_configuration": {"latent_dim": 16, "boxes": 1, "epochs": 60, "batch_size": 64, "seed": 23, "optimizer": "Adam", "learning_rate": 0.02, "tau": 0.1, "clip_norm": 1.0, "epsilon": 0.0001, "weight_decay": 0}
+  },
+  "runs": {
+    "unbounded": {
+      "run_id": "20261125T205910-8eac8a31db0a",
+      "activation": "identity",
+      "selected_epoch": 45,
+      "selected_validation_loss": 0.01507347822189331,
+      "pizza_micro_f1": 0.98698153194066,
+      "pizza_macro_f1": 0.986579354799346,
+      "pizza_macro_defined_classes": 31,
+      "component_micro_f1": 1.0,
+      "component_macro_f1": 1.0,
+      "component_macro_defined_classes": 30,
+      "best_mean_task_micro_f1_epoch": 45,
+      "best_mean_task_micro_f1": 0.99349076597033,
+      "pizza_seen_signature_micro_f1": 0.9994962216624685,
+      "pizza_unseen_signature_micro_f1": 0.9681335356600911,
+      "component_unseen_signatures": 0,
+      "selected_checkpoint_reload_equivalent": true,
+      "metrics_sha256": "742d316a7fedce29441f5b64cde49584e95f69b86b60dbfe748b607b7fa84b1e",
+      "selected_checkpoint_sha256": "4cefd5eb9bae0ccad138c0303c501239a5a6ce065d0231e4a7f602c5449a2dd8"
+    },
+    "bounded": {
+      "run_id": "20261125T212135-1c0e34f5174a",
+      "activation": "tanh",
+      "selected_epoch": 54,
+      "selected_validation_loss": 0.022922953590750694,
+      "pizza_micro_f1": 0.9849215922798552,
+      "pizza_macro_f1": 0.9823899778387365,
+      "pizza_macro_defined_classes": 31,
+      "component_micro_f1": 0.9995236835141572,
+      "component_macro_f1": 0.999922600619195,
+      "component_macro_defined_classes": 30,
+      "best_mean_task_micro_f1_epoch": 59,
+      "best_mean_task_micro_f1": 0.9934479511978482,
+      "pizza_seen_signature_micro_f1": 0.9959595959595959,
+      "pizza_unseen_signature_micro_f1": 0.968562874251497,
+      "component_unseen_signatures": 0,
+      "selected_checkpoint_reload_equivalent": true,
+      "metrics_sha256": "1b2189800404e480a846edbd4baf1a0ae8dd4b364bade4b5fbe72c083c8498dc",
+      "selected_checkpoint_sha256": "4812e30e1d7ad5182e3970e92cc83b855f51928c9243b3ffe0371650d7ac0bc8"
+    }
+  },
+  "train_only_baselines": {"pizza_micro_f1": 0.6475535168195719, "component_micro_f1": 0.7319846848391337},
+  "historical_affine_reference": {
+    "source_sha": "522c3f30240e65a431abdfc7694d0006866b0874",
+    "run_id": "20261123T105917-c00ea4941c34",
+    "pizza_micro_f1": 0.9894482967,
+    "component_micro_f1": 1.0,
+    "interpretation": "descriptive only; BOX pizza score is lower, unbounded component ties, bounded component is slightly lower"
+  },
+  "fixed_coordinate_controls": {
+    "source_sha": "0e8a996794b788e45b96f108e79a03dca2843e4e",
+    "fixture": {"points_sha256": "8cf46d5f36c794f8ee01a15cea59ba3ec29ec21970b2881903a6a1e57db07067", "targets_sha256": "4446e01a501c5127de81d2ec68e184169a6e526381ac27edfd79fc3552eeea94", "expected_and_observed_membership": [true, true, false, false, false, false]},
+    "runs": [
+      {"run_id": "20261126T100003-10e38dc5e838", "domain": "bounded", "objective": "logistic", "tau": 0.1, "epochs": 350, "status": "passed", "target_recovered": true, "geometry_updated": true, "finite_gradient_max_norm": 0.8075878620147705, "manifest_sha256": "4945a2174d450495f1a623b10f6072fa72ab95e1e16e967beff704154c50d13d", "metrics_sha256": "d173ba0508a5b830379c800924fc4dd82cef2dba8d6fe935456614ac7185d251", "initial_checkpoint_sha256": "69a6a5cacf67b9f8cfb032248e5704c31c64932e401463ca066bc31201f0d0f4", "final_checkpoint_sha256": "95e1cff728cbb1de52a43fdf3eaff035aecdaa866d7b29716ea9385128dfbdd1"},
+      {"run_id": "20261126T100006-3c3e4f9b813b", "domain": "bounded", "objective": "hinge", "margin": 0.1, "epochs": 350, "status": "passed", "target_recovered": true, "geometry_updated": true, "finite_gradient_max_norm": 0.11784492433071136, "manifest_sha256": "7008b1545f3f11358447c25e85585f34f34510e98d9352c0c350620500163f74", "metrics_sha256": "a6bcbfb783bebeda422a1a09eb11b4ec2dd7077361720fc464273a32ead29ed4", "initial_checkpoint_sha256": "360b9aae571e9acffa3de9239321d2ed4c400e29d5277f60b7114d9efee19f4a", "final_checkpoint_sha256": "65d34fa53d640f542e1e92fa074d0d78b3e9475a16f221a7fb76804e1b759277"},
+      {"run_id": "20261126T100008-fe2c37c4f386", "domain": "unbounded", "objective": "logistic", "tau": 0.1, "epochs": 350, "status": "passed", "target_recovered": true, "geometry_updated": true, "finite_gradient_max_norm": 1.9359064102172852, "manifest_sha256": "a2584b6d4c3fa40cef05c68758b14109a26d66397c55692decf629a46be633a8", "metrics_sha256": "b4a48feb87f009c2a9f0387eef4ffe32057b711487ebdbde975ef23cd590460a", "initial_checkpoint_sha256": "81242feac597ac98c86b07c916d91046b6eb0753a27a8c00821b37d75bc0eb10", "final_checkpoint_sha256": "5990030f2eece7764ac22ce79bbd16a8ae1768e606f04c98d5a599b80eb679cb"},
+      {"run_id": "20261126T100010-100ebcfcc94c", "domain": "unbounded", "objective": "hinge", "margin": 0.1, "epochs": 350, "status": "passed", "target_recovered": true, "geometry_updated": true, "finite_gradient_max_norm": 0.23730027675628662, "manifest_sha256": "da462518ed0415192b79989c5034372a0fb74d25d472bb603d8ced8a2c791e54", "metrics_sha256": "45b8434f03f83480ab41770bd90cb9bc08ee1ed9bd5636eb2ce73a78358e2998", "initial_checkpoint_sha256": "71de44bb42917181c04fd394bfa6ea85d6b580b6aaf69db1ef54fbd3dda8219d", "final_checkpoint_sha256": "25608d59468d9b47d4cab29a935e412c0db5da13ccd72011d258f012128f1262"}
+    ]
+  },
+  "verification": {
+    "original_source_math_tests": {"status": "passed", "passed": 33, "output_sha256": "5809eb15f2d07537d0f3a8f5c3d01b4a6b87e2131b1f1bf8fae3df7c75d4ac0c", "source_sha": "0e8a996794b788e45b96f108e79a03dca2843e4e"},
+    "final_integration_regression": {"status": "passed", "passed": 225, "elapsed_seconds": 60.05, "environment": "existing PR2 Python environment, PyTorch 2.6.0+cpu"},
+    "export_guard_regression": {"status": "passed", "passed": 1, "pre_fix_reproduction": "same focused test failed before correction: both selected checkpoints with deliberately invalid provenance were packaged"},
+    "lint_format_diff": "passed",
+    "historical_affine_checkpoint": {"status": "loaded strictly; finite [1,60] pizza/component logits", "checkpoint_sha256": "ef3605e089da10f9d10b31afb225e50b59eb01ad50aefed0a080012b909dd92b"},
+    "immutable_box_r01_evidence_branch": "thesis/box-r01-evidence@5899bb43df4dbbdd56b9d1dc822c5a841994535c",
+    "box_r01_package_checksums": "verified; both 60-row compressed metric histories verified",
+    "original_model_finalizer_bundle_sha256": "e8f877dd5bfd893accf6e6ca0804d8f7359ad2976d5d787a83c350ed931a15cb"
+  },
+  "limitations": [
+    "One seed, one required substantial configuration per domain, and one historical train/validation split.",
+    "No test partition predictive access or independent test evaluation.",
+    "Metadata-oracle task only; no pixels, detector predictions, or visual recognition claim.",
+    "No BOX superiority claim over affine; comparison is descriptive and confounded by model/representation differences.",
+    "Seen/unseen-signature validation is not external or distribution-shift generalization; component unseen-signature metric is undefined because there are no unseen component signatures.",
+    "Preliminary single-seed evidence does not establish definitive comparative thesis results or global ontology-relation satisfaction."
+  ]
+}

@@ -749,6 +749,74 @@ def test_finalize_maps_A_B_C_and_rejects_duplicate_control_combinations(tmp_path
     assert weak["acceptance_B"]["status"] == "failed"
 
 
+def test_finalizer_never_exports_selected_checkpoint_with_invalid_run_provenance(
+    tmp_path, monkeypatch
+):
+    import ontology_embeddings.pr3_acceptance as acceptance
+
+    work = tmp_path / "work"
+    work.mkdir()
+    destination = tmp_path / "evidence"
+    prep = {
+        "destination": str(destination),
+        "source": {"commit_sha": "expected", "availability": "available", "dirty": False},
+        "baselines": {},
+        "limitations": [],
+    }
+    (work / "prepare.json").write_text(json.dumps(prep))
+    best = tmp_path / "best.pt"
+    best.write_bytes(b"selected checkpoint")
+    run_results = {}
+    for domain in ("bounded", "unbounded"):
+        run_path = tmp_path / f"{domain}-run"
+        run_path.mkdir()
+        (run_path / "manifest.json").write_text(
+            json.dumps({"run_id": domain, "status": "completed", "source": {}})
+        )
+        run_results[domain] = {
+            "run_id": domain,
+            "status": "completed",
+            "run_path": str(run_path),
+            "checkpoint_paths": {"best": str(best)},
+            "history": [],
+            "parameter_updates": {},
+        }
+    monkeypatch.setattr(
+        acceptance,
+        "assess_run",
+        lambda *_args, **_kwargs: {
+            "accepted_C": True,
+            "selected_epoch": 45,
+            "selected_validation_loss": 0.1,
+            "selected_checkpoint": str(best),
+        },
+    )
+    monkeypatch.setattr(acceptance, "validate_paired_results", lambda _: {"status": "passed"})
+    monkeypatch.setattr(
+        acceptance,
+        "_read_run_result",
+        lambda path: {"run_id": Path(path).name.split("-")[0], "status": "completed"},
+    )
+    monkeypatch.setattr(
+        acceptance,
+        "_validate_main_run_provenance",
+        lambda *_args: ["deliberate provenance mismatch"],
+    )
+    monkeypatch.setattr(
+        acceptance,
+        "_run_mathematical_numerical_tests",
+        lambda _: {"status": "not-established"},
+    )
+
+    finalized = acceptance.finalize(work, run_results)
+
+    assert finalized["report"]["provenance_valid"] is False
+    assert finalized["report"]["scientific_acceptance_status"] == "failed"
+    assert finalized["report"]["packaged_best_checkpoints"] == {}
+    assert finalized["report"]["assessments"]["bounded"]["selected_checkpoint"] is None
+    assert not (destination / "checkpoints").exists()
+
+
 def test_mathematical_evidence_runs_fixed_tests_and_binds_output_to_source(monkeypatch):
     import hashlib
 

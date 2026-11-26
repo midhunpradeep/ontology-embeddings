@@ -2109,7 +2109,12 @@ def finalize(
     for domain in CONFIGS:
         result = run_results.get(domain, {})
         path = result.get("checkpoint_paths", {}).get("best")
-        if assessments[domain].get("selected_epoch") is not None and path and Path(path).is_file():
+        if (
+            provenance_valid
+            and assessments[domain].get("selected_epoch") is not None
+            and path
+            and Path(path).is_file()
+        ):
             checkpoint_artifacts[domain] = {"path": path, "run_id": result.get("run_id")}
         assessments[domain]["selected_checkpoint"] = (
             f"checksummed evidence bundle: checkpoints/{domain}-best.pt"
