@@ -75,7 +75,21 @@ def verify_cuda_runtime(device: str) -> dict[str, Any]:
 def require_ignored_artifact_path(path: Path | str) -> None:
     """Reject local run/preparation artifacts under the checkout unless Git ignores them."""
     target = Path(path).expanduser().resolve()
-    source_root = Path(__file__).resolve().parents[2]
+    probe = target
+    while not probe.is_dir():
+        probe = probe.parent
+    try:
+        source_root = Path(
+            subprocess.run(
+                ["git", "rev-parse", "--show-toplevel"],
+                cwd=probe,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+        ).resolve()
+    except (OSError, subprocess.CalledProcessError):
+        source_root = Path(__file__).resolve().parents[2]
     try:
         target.relative_to(source_root)
     except ValueError:

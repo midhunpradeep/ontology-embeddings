@@ -6,7 +6,6 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from ontology_embeddings.box import inverse_geometry
 from ontology_embeddings.box_training import (
     BoxMultiLabelModel,
     _geometry_diagnostics,
@@ -308,12 +307,12 @@ def test_diagnostics_distinguish_box_ties_from_nested_face_ties():
     model.encode = lambda features, entity: torch.zeros((len(features), 1))
 
     # Each tied box has one distinct limiting face: this is a box tie, not a face tie.
-    lower = torch.tensor([[[-0.2], [-0.6]], [[-0.2], [-0.6]]])
-    upper = torch.tensor([[[0.6], [0.2]], [[0.6], [0.2]]])
-    raw_a, raw_b = inverse_geometry(lower, upper, domain="unbounded")
+    # Construct ties directly in raw coordinates so they remain exact across
+    # supported PyTorch softplus implementations (inverse/decode can round by 1 ulp).
     with torch.no_grad():
-        model.geometry.raw_a.copy_(raw_a)
-        model.geometry.raw_b.copy_(raw_b)
+        model.geometry.raw_a.zero_()
+        model.geometry.raw_b[0, :, 0] = torch.tensor([0.125, -0.125])
+        model.geometry.raw_b[1, :, 0] = torch.tensor([0.125, -0.125])
     result = _geometry_diagnostics(
         model, [_record("diagnostic", "train", True)], _dataset(), torch.device("cpu")
     )
@@ -323,12 +322,14 @@ def test_diagnostics_distinguish_box_ties_from_nested_face_ties():
 
     # One winning box has two tied faces and the other has one. Activity weights
     # must follow max-over-box then min-over-face symmetric gradients (3:1).
-    lower = torch.tensor([[[-0.2], [-0.2]], [[-0.2], [-0.2]]])
-    upper = torch.tensor([[[0.2], [0.6]], [[0.2], [0.6]]])
-    raw_a, raw_b = inverse_geometry(lower, upper, domain="unbounded")
     with torch.no_grad():
-        model.geometry.raw_a.copy_(raw_a)
-        model.geometry.raw_b.copy_(raw_b)
+        model.geometry.raw_a[:, 0, :].zero_()
+        model.geometry.raw_a[:, 1, :].fill_(1.0)
+        model.geometry.raw_b.zero_()
+        half_widths = model.epsilon / 2.0 + torch.nn.functional.softplus(model.geometry.raw_a)
+        # Offset the wider box by exactly the representable half-width difference;
+        # its lower-face clearance then equals the centered box's two-face tie.
+        model.geometry.raw_b[:, 1, :] = half_widths[:, 1, :] - half_widths[:, 0, :]
     result = _geometry_diagnostics(
         model, [_record("diagnostic", "train", True)], _dataset(), torch.device("cpu")
     )

@@ -48,8 +48,8 @@ The finalizer previously selected checkpoint files for export based only on a se
 
 ## Verification and durable evidence
 
-- Full regression suite on the final integration source: **225 passed**. One initial attempt using the CUDA experiment venv lacked this source checkout's distribution metadata (224 passed, one environment-only package metadata test failed); the suite was run once successfully with the existing PR2 PyTorch environment, without installing dependencies.
-- Focused post-correction export-guard test: **1 passed**.
+- Full regression suite on the final integration source: **225 passed** in the existing PR2 PyTorch environment (2.6.0+cpu); no dependency installation was performed locally. The first GitHub Actions attempt exposed two environment-sensitive defects: installed-package checkout-root discovery for the artifact isolation guard, and an inverse/decode float32 tie fixture that lost exact equality under CI's newer PyTorch. The root lookup now resolves from the target path, and the tie test constructs exact ties in raw coordinates; no model behavior changed. CI rerun is pending.
+- Focused post-correction export-guard, artifact-isolation, and exact-tie tests: **1 passed each**.
 - Ruff checks (`ruff check src tests`, changed-file format check) and `git diff --check`: passed.
 - Historical affine compatibility: the original PR2 `best.pt` loaded strictly into the affine model; both pizza and component forward outputs had shape `[1, 60]` and finite logits.
 - Immutable full BOX-R01 artifact reference: [`thesis/box-r01-evidence` at `5899bb43df4dbbdd56b9d1dc822c5a841994535c`](https://github.com/midhunpradeep/ontology-embeddings/tree/thesis/box-r01-evidence/evidence/box-r01). Its package-level and per-run checksums verified; both compressed metric histories contain all 60 epochs. The package contains no raw dataset or decoded sample-ID lists. The PR includes only compact acceptance evidence and references this immutable bundle rather than copying its checkpoints/history.
