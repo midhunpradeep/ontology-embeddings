@@ -55,6 +55,7 @@ def main() -> None:
                     "supervision_views": ["supervision_restricted", "unrestricted"],
                 }
         meta = evaluation["metadata"]
+        meta.pop("invocation_template", None)
         meta["original_evaluation_invocation"] = {
             "status": "exact_historical_argv_not_recoverable_from_retained_logs_or_run_records",
             "entry_point": "python -m ontology_embeddings.rel01_cli",

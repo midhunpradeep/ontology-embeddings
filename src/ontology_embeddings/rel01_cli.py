@@ -6,10 +6,33 @@ import argparse
 import gzip
 import json
 from pathlib import Path
+from typing import Any
 
 from .dataset.image_data import load_prepared_dataset
 from .observed_relations import verify_historical_dataset
 from .relation_evaluation import evaluate_checkpoint
+
+
+def _invocation_provenance(evidence_name: str, output_name: str, dataset: Any) -> dict:
+    return {
+        "status": "recorded_actual_cli_arguments",
+        "entry_point": "python -m ontology_embeddings.rel01_cli",
+        "evaluation_mode": "global_and_observed" if dataset is not None else "global_only",
+        "arguments": {
+            "evidence": evidence_name,
+            "output": output_name,
+            "dataset": (
+                {
+                    "provided": True,
+                    "dataset_id": dataset.dataset_id,
+                    "declared_manifest_id": dataset.manifest_id,
+                }
+                if dataset is not None
+                else {"provided": False}
+            ),
+        },
+    }
+
 
 RUNS = {
     "20261125T205910-8eac8a31db0a": [("initial", 0), ("best", 45), ("latest", 60)],
@@ -42,26 +65,7 @@ def main() -> None:
                 label=name,
                 observed_dataset=dataset,
                 observed_dataset_identity=dataset_identity,
-                invocation_provenance={
-                    "status": "recorded_actual_cli_arguments",
-                    "entry_point": "python -m ontology_embeddings.rel01_cli",
-                    "evaluation_mode": "global_and_observed"
-                    if dataset is not None
-                    else "global_only",
-                    "arguments": {
-                        "evidence": root.name,
-                        "output": a.output.name,
-                        "dataset": (
-                            {
-                                "provided": True,
-                                "dataset_id": dataset.dataset_id,
-                                "declared_manifest_id": dataset.manifest_id,
-                            }
-                            if dataset is not None
-                            else {"provided": False}
-                        ),
-                    },
-                },
+                invocation_provenance=_invocation_provenance(root.name, a.output.name, dataset),
             )
             if item["metadata"]["epoch"] != epoch:
                 raise ValueError(f"expected epoch {epoch}, got {item['metadata']['epoch']}")

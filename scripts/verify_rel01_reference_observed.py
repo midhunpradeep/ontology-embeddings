@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -135,8 +136,20 @@ def main() -> None:
                         "measurements": independent,
                     }
                 )
+    source_revision = subprocess.run(
+        ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+    ).stdout.strip()
     result = {
         "status": "PASS",
+        "verification_provenance": {
+            "entry_point": "python scripts/verify_rel01_reference_observed.py",
+            "arguments": {
+                "--source": args.source.name,
+                "--corrected": args.corrected.name,
+                "--output": args.output.name,
+            },
+            "producing_source_revision": source_revision,
+        },
         "independent_method": (
             "directly sum reference-filtered per-pair records; no production aggregation helper"
         ),
