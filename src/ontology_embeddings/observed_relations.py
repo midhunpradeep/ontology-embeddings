@@ -154,6 +154,100 @@ def _view(
     }
 
 
+def _aggregate_pair_records(
+    pair_records: list[dict[str, Any]],
+    subclass_relations: set[tuple[int, int]] | None = None,
+    disjoint_relations: set[tuple[int, int]] | None = None,
+) -> dict[str, Any]:
+    """Aggregate pair measurements, optionally filtered to reference axioms."""
+    selected = []
+    for row in pair_records:
+        pair = (row["a_id"], row["b_id"])
+        if subclass_relations is None and disjoint_relations is None:
+            selected.append((row, True, True))
+            continue
+        selected.append(
+            (
+                row,
+                any((a, b) in (subclass_relations or set()) for a, b in (pair, pair[::-1])),
+                tuple(sorted(pair)) in (disjoint_relations or set()),
+            )
+        )
+
+    result = {}
+    for view_name in ("supervision_restricted", "unrestricted"):
+        result[view_name] = {}
+        for unit_name in ("occurrence_weighted", "distinct_embedding"):
+            sub_violations = sub_support = dis_violations = dis_opportunities = 0
+            for row, has_sub, has_dis in selected:
+                view = row[view_name][unit_name]
+                if has_sub:
+                    key = (
+                        "subsumption_a_to_b"
+                        if (row["a_id"], row["b_id"]) in (subclass_relations or set())
+                        else "subsumption_b_to_a"
+                    )
+                    stat = view[key]
+                    sub_violations += stat["violation_count"]
+                    sub_support += stat["antecedent_support"]
+                if has_dis:
+                    stat = view["disjointness"]
+                    dis_violations += stat["violation_count"]
+                    dis_opportunities += stat["denominator"]
+            sub_rate = sub_violations / sub_support if sub_support else None
+            dis_rate = dis_violations / dis_opportunities if dis_opportunities else None
+            result[view_name][unit_name] = {
+                "reference_subclass_relation_count": sum(has_sub for _, has_sub, _ in selected),
+                "subsumption_violation_count": sub_violations,
+                "subsumption_antecedent_support": sub_support,
+                "subsumption_eligible_population_denominator": sub_support,
+                "subsumption_conditional_violation_rate": sub_rate,
+                "subsumption_zero_antecedent_support": sub_support == 0,
+                "subsumption_vacuously_satisfied": sub_support == 0 and sub_violations == 0,
+                "subsumption_supported_satisfied": sub_support > 0 and sub_violations == 0,
+                "subsumption_undefined_rate_reason": "zero_antecedent_support"
+                if sub_support == 0
+                else None,
+                "reference_disjoint_pair_count": sum(has_dis for _, _, has_dis in selected),
+                "disjointness_violation_count": dis_violations,
+                "disjointness_eligible_population_denominator": dis_opportunities,
+                "disjointness_conditional_violation_rate": dis_rate,
+                "disjointness_vacuously_satisfied": dis_opportunities == 0 and dis_violations == 0,
+                "disjointness_supported_satisfied": dis_opportunities > 0 and dis_violations == 0,
+                "disjointness_undefined_rate_reason": "no_eligible_pair_entity_opportunities"
+                if dis_opportunities == 0
+                else None,
+            }
+    cross = {}
+    for unit_name in ("occurrence_weighted", "distinct_embedding"):
+        sub_v = dis_v = eligible_count = 0
+        for row, has_sub, has_dis in selected:
+            counts = row["unrestricted_violations_outside_joint_supervision"][unit_name]
+            if has_sub:
+                # Directed reference orientation determines the applicable counter.
+                key = (
+                    "a_to_b"
+                    if (row["a_id"], row["b_id"]) in (subclass_relations or set())
+                    else "b_to_a"
+                )
+                sub_v += counts[key]
+            if has_dis:
+                dis_v += counts["disjointness"]
+                eligible_count += counts["eligible_entity_count"]
+        cross[unit_name] = {
+            "reference_subsumption_violation_count": sub_v,
+            "reference_disjointness_violation_count": dis_v,
+            "disjointness_cross_supervision_eligible_opportunities": eligible_count,
+        }
+    return {
+        "population_identity": "named_fragment_reference_axioms"
+        if subclass_relations is not None
+        else "all_candidate_class_pairs",
+        "measurements": result,
+        "violations_outside_joint_supervision": cross,
+    }
+
+
 def evaluate_observed_population(
     points: np.ndarray,
     memberships: np.ndarray,
@@ -291,7 +385,15 @@ def evaluate_observed_population(
         "entity_occurrence_count": int(len(points)),
         "distinct_embedding_count": int(len(unique_membership)),
         "class_occupancy": occupancy,
+        "summary_population_identity": "all_candidate_class_pairs",
+        "summary_interpretation": (
+            "descriptive statistics over all candidate class pairs; not all pairs are "
+            "ontology requirements"
+        ),
         "summary": aggregate,
+        "cross_task_violations_outside_joint_supervision_population_identity": (
+            "all_candidate_class_pairs"
+        ),
         "cross_task_violations_outside_joint_supervision": cross_summary,
         "pairs": pair_records,
     }

@@ -1,6 +1,7 @@
 import numpy as np
 
 from ontology_embeddings.observed_relations import (
+    _aggregate_pair_records,
     evaluate_observed_population,
     split_observed_records,
 )
@@ -50,6 +51,12 @@ def test_restricted_and_unrestricted_contingencies_and_cross_task_violations():
         "disjointness": 1,
         "eligible_entity_count": 2,
     }
+    filtered = _aggregate_pair_records(result["pairs"], {(7, 12)}, {(7, 12)})
+    assert filtered["violations_outside_joint_supervision"]["occurrence_weighted"] == {
+        "reference_subsumption_violation_count": 1,
+        "reference_disjointness_violation_count": 1,
+        "disjointness_cross_supervision_eligible_opportunities": 2,
+    }
 
 
 def test_zero_support_is_vacuous_but_rate_undefined():
@@ -80,6 +87,62 @@ def test_distinct_embeddings_deduplicate_after_relation_eligibility():
     assert unrestricted["contingency"]["a_positive_b_negative"] == 1
     assert result["entity_occurrence_count"] == 4
     assert result["distinct_embedding_count"] == 3
+
+
+def test_reference_aggregation_filters_pairs_and_preserves_all_candidate_totals():
+    classes = [*CLASSES, {"class_id": 20, "name": "C", "iri": "urn:C"}]
+    points = np.array([[0.0], [1.0], [2.0]])
+    membership = np.array([[1, 0, 1], [0, 1, 0], [1, 1, 1]], dtype=bool)
+    eligibility = np.ones_like(membership)
+    result = evaluate_observed_population(points, membership, eligibility, classes)
+    all_candidates = result["summary"]["unrestricted"]["occurrence_weighted"]
+    reference = _aggregate_pair_records(result["pairs"], {(7, 12)}, {(7, 12)})
+    assert reference["population_identity"] == "named_fragment_reference_axioms"
+    stats = reference["measurements"]["unrestricted"]["occurrence_weighted"]
+    assert stats["reference_subclass_relation_count"] == 1
+    assert stats["reference_disjoint_pair_count"] == 1
+    assert stats["subsumption_violation_count"] == 1
+    assert stats["subsumption_antecedent_support"] == 2
+    assert stats["disjointness_violation_count"] == 1
+    assert stats["disjointness_eligible_population_denominator"] == 3
+    assert result["summary"]["unrestricted"]["occurrence_weighted"] == all_candidates
+    assert (
+        all_candidates["directed_subsumption_violation_count"]
+        > stats["subsumption_violation_count"]
+    )
+
+
+def test_reference_subsumption_direction_disjoint_once_and_zero_denominator():
+    points = np.array([[0.0], [1.0]])
+    membership = np.array([[1, 0], [1, 1]], dtype=bool)
+    eligibility = np.ones_like(membership)
+    result = evaluate_observed_population(points, membership, eligibility, CLASSES)
+    # A -> B has one violation; the reverse direction has none and must not be included.
+    ref = _aggregate_pair_records(result["pairs"], {(7, 12)}, {(7, 12)})
+    occurrence = ref["measurements"]["supervision_restricted"]["occurrence_weighted"]
+    assert occurrence["subsumption_violation_count"] == 1
+    assert occurrence["subsumption_antecedent_support"] == 2
+    assert occurrence["reference_disjoint_pair_count"] == 1
+    # One unordered pair is counted once over its two eligible entities.
+    assert occurrence["disjointness_eligible_population_denominator"] == 2
+    distinct = ref["measurements"]["unrestricted"]["distinct_embedding"]
+    assert distinct["subsumption_violation_count"] == 1
+    assert distinct["subsumption_antecedent_support"] == 2
+    no_overlap = evaluate_observed_population(
+        np.array([[0.0], [1.0]]),
+        np.array([[1, 0], [0, 1]], dtype=bool),
+        np.zeros((2, 2), dtype=bool),
+        CLASSES,
+    )
+    empty = _aggregate_pair_records(no_overlap["pairs"], {(7, 12)}, {(7, 12)})["measurements"][
+        "supervision_restricted"
+    ]["occurrence_weighted"]
+    assert empty["subsumption_conditional_violation_rate"] is None
+    assert empty["subsumption_undefined_rate_reason"] == "zero_antecedent_support"
+    assert empty["subsumption_vacuously_satisfied"] is True
+    assert empty["subsumption_supported_satisfied"] is False
+    assert empty["disjointness_conditional_violation_rate"] is None
+    assert empty["disjointness_undefined_rate_reason"] == "no_eligible_pair_entity_opportunities"
 
 
 def test_per_class_occupancy_reports_occurrences_and_unique_points():

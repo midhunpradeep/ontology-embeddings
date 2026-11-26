@@ -42,6 +42,26 @@ def main() -> None:
                 label=name,
                 observed_dataset=dataset,
                 observed_dataset_identity=dataset_identity,
+                invocation_provenance={
+                    "status": "recorded_actual_cli_arguments",
+                    "entry_point": "python -m ontology_embeddings.rel01_cli",
+                    "evaluation_mode": "global_and_observed"
+                    if dataset is not None
+                    else "global_only",
+                    "arguments": {
+                        "evidence": root.name,
+                        "output": a.output.name,
+                        "dataset": (
+                            {
+                                "provided": True,
+                                "dataset_id": dataset.dataset_id,
+                                "declared_manifest_id": dataset.manifest_id,
+                            }
+                            if dataset is not None
+                            else {"provided": False}
+                        ),
+                    },
+                },
             )
             if item["metadata"]["epoch"] != epoch:
                 raise ValueError(f"expected epoch {epoch}, got {item['metadata']['epoch']}")
@@ -111,8 +131,43 @@ def main() -> None:
                                     )
                                 }
                 transition["observed_consistency_delta"] = deltas
+                reference_deltas = {}
+                for split in ("train", "validation"):
+                    reference_deltas[split] = {}
+                    for entity in ("pizza", "component"):
+                        reference_deltas[split][entity] = {}
+                        old_ref = left["observed"]["populations"][split][entity][
+                            "reference_only_summary"
+                        ]["measurements"]
+                        new_ref = right["observed"]["populations"][split][entity][
+                            "reference_only_summary"
+                        ]["measurements"]
+                        for view in ("supervision_restricted", "unrestricted"):
+                            reference_deltas[split][entity][view] = {}
+                            for unit in ("occurrence_weighted", "distinct_embedding"):
+                                old_stats = old_ref[view][unit]
+                                new_stats = new_ref[view][unit]
+                                keys = (
+                                    "subsumption_violation_count",
+                                    "subsumption_antecedent_support",
+                                    "subsumption_conditional_violation_rate",
+                                    "disjointness_violation_count",
+                                    "disjointness_eligible_population_denominator",
+                                    "disjointness_conditional_violation_rate",
+                                )
+                                reference_deltas[split][entity][view][unit] = {
+                                    key: new_stats[key] - old_stats[key]
+                                    if old_stats[key] is not None and new_stats[key] is not None
+                                    else None
+                                    for key in keys
+                                }
+                transition["reference_only_observed_consistency_delta"] = {
+                    "population_identity": "named_fragment_reference_axioms",
+                    "populations": reference_deltas,
+                }
             else:
                 transition["observed_consistency_delta"] = None
+                transition["reference_only_observed_consistency_delta"] = None
             transitions.append(transition)
     a.output.parent.mkdir(parents=True, exist_ok=True)
     bundle = {

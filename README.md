@@ -15,6 +15,18 @@ IDs, and original-pixel annotation geometry. Synthetic absences are known negati
 the pinned generator's prepared-data contract; they are not a general closed-world interpretation
 of OWL.
 
+## REL-01 learned BOX geometry (diagnostic evidence)
+
+[Corrected REL-01 evidence](evidence/rel-01-observed-v2/README.md) separates three different
+quantities: exact **global geometric relation satisfaction** over stored boxes; **reference-only
+observed axiom consistency** filtered to the supported named-fragment subclass/disjointness
+relations; and **all-candidate observed relation statistics**, which are descriptive and do not
+make every candidate implication an ontology requirement. Each observed measure separately reports
+supervision-restricted versus unrestricted populations and occurrence-weighted versus distinct-
+embedding units. Rates with zero denominator are undefined. The earlier observed-v1 80–86%
+subsumption rates were all-candidate conditional rates, not ontology-axiom violation rates, and are
+explicitly superseded by the corrected reference-only results; the historical bundle is retained.
+
 ## Install and validate the fixture
 
 Requires Python 3.11 or 3.12.

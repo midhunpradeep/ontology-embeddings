@@ -24,7 +24,11 @@ from .features import (
     component_features,
     pizza_features,
 )
-from .observed_relations import evaluate_observed_population, split_observed_records
+from .observed_relations import (
+    _aggregate_pair_records,
+    evaluate_observed_population,
+    split_observed_records,
+)
 from .relation_geometry import directed, unordered
 
 
@@ -143,6 +147,20 @@ def _observed_evaluation(
             )
             pair_by_ids = {(row["a_id"], row["b_id"]): row for row in population["pairs"]}
             name_to_id = {c["name"]: c["class_id"] for c in classes}
+            subclass_ids = {
+                (name_to_id[child], name_to_id[parent]) for child, parent in subclass_reference
+            }
+            disjoint_ids = {
+                tuple(sorted((name_to_id[left], name_to_id[right])))
+                for left, right in disjoint_reference
+            }
+            population["all_candidate_summary_population"] = "all_candidate_class_pairs"
+            population["reference_only_summary"] = _aggregate_pair_records(
+                population["pairs"], subclass_ids, disjoint_ids
+            )
+            population["all_candidate_violations_outside_joint_supervision_population"] = (
+                "all_candidate_class_pairs"
+            )
             for child, parent in learned_subsumption:
                 a_id, b_id = name_to_id[child], name_to_id[parent]
                 row = pair_by_ids[tuple(sorted((a_id, b_id)))]
@@ -241,6 +259,7 @@ def evaluate_checkpoint(
     label: str,
     observed_dataset: PreparedDataset | None = None,
     observed_dataset_identity: dict[str, Any] | None = None,
+    invocation_provenance: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     digest = _sha(checkpoint)
     manifest = evidence_root / "SHA256SUMS"
@@ -588,10 +607,25 @@ def evaluate_checkpoint(
             "class_ids": ids,
             "vocabulary_sha256": model.vocabulary_sha256,
             "ontology_sha256": ontology.sha256,
-            "invocation_template": (
-                "python -m ontology_embeddings.rel01_cli <verified-evidence-dir> "
-                "<new-output.json.gz>"
-            ),
+            "invocation_provenance": {
+                **(
+                    invocation_provenance
+                    or {
+                        "status": "invocation_not_recorded_by_caller",
+                        "entry_point": (
+                            "ontology_embeddings.relation_evaluation.evaluate_checkpoint"
+                        ),
+                    }
+                ),
+                "checkpoint_evidence_identity": {
+                    "run_id": run_id,
+                    "label": label,
+                    "epoch": payload["epoch"],
+                    "checkpoint_sha256": digest,
+                },
+                "dataset_identity": observed_dataset_identity,
+                "producing_source_revision": revision,
+            },
             "reference_fragment": (
                 "named-subclass-closure+explicit-disjointWith+AllDisjointClasses+"
                 "inherited-disjointness-v1"
