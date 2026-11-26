@@ -11,3 +11,7 @@ component train/validation: signature overlap=22, train-only=0, validation-only=
 
 See summary.json, classes.csv, class_pairs.csv, feature_associations.csv, feature_pairs.csv, coverage.json, and signature JSONL for primary evidence.
 Empirical implications are finite-sample patterns, not global ontology claims. Feature-association evidence is occurrence-weighted; validation is development data.
+
+Correction: the supported ontology fragment now includes named-member `owl:AllDisjointClasses` pair expansion and inherited disjointness. This adds 312 component-applicable disjoint pairs to the 3 previously represented pairs (315 total); no joint-positive contradiction was found in train or validation. Component special-class denominators now count components only: `DomainThing` train support is 12,338 (validation 4,028). The fixed-positive/unsupported special-class semantics are unchanged.
+
+Correction evidence was regenerated from the retained train/validation signature evidence and pinned ontology with implementation source `d000c04cfc81dcb17ede15a19f3a5ade39db45c0`; unaffected audit measurements were preserved. The original raw dataset is not present in this correction environment, so no fresh full data-loader audit was possible. CSV outputs are serialized with LF, and checksums cover the final artifact bytes.
