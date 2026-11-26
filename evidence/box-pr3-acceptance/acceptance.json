@@ -91,7 +91,7 @@
     "export_guard_regression": {"status": "passed", "passed": 1, "pre_fix_reproduction": "same focused test failed before correction: both selected checkpoints with deliberately invalid provenance were packaged"},
     "artifact_path_and_exact_tie_regressions": {"status": "passed", "passed": 3, "purpose": "resolve CI-only installed-checkout path detection and float32 inverse/decode tie fixture failures without changing BOX model behavior"},
     "github_actions_initial_attempt": {"status": "failed", "runs": [45799876977, 45799923419], "failure": "artifact-path guard used installed package location rather than checkout root; Python 3.12 additionally lost intended exact tie after float32 inverse/decode under newer PyTorch"},
-    "github_actions_rerun": "pending after targeted corrections",
+    "github_actions_rerun": {"status": "passed", "runs": [45801728589, 45801739371], "matrix": ["Python 3.11", "Python 3.12"]},
     "lint_format_diff": "passed",
     "historical_affine_checkpoint": {"status": "loaded strictly; finite [1,60] pizza/component logits", "checkpoint_sha256": "ef3605e089da10f9d10b31afb225e50b59eb01ad50aefed0a080012b909dd92b"},
     "immutable_box_r01_evidence_branch": "thesis/box-r01-evidence@5899bb43df4dbbdd56b9d1dc822c5a841994535c",
