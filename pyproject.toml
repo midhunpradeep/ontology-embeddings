@@ -21,6 +21,7 @@ dependencies = [
 
 [project.scripts]
 oe-dataset = "ontology_embeddings.cli:main"
+oe-town = "ontology_embeddings.town_experiment:main"
 
 [project.optional-dependencies]
 dev = [
