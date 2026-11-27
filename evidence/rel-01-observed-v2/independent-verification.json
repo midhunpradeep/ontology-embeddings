@@ -1,0 +1,1362 @@
+{
+  "status": "PASS",
+  "verification_provenance": {
+    "entry_point": "python scripts/verify_rel01_reference_observed.py",
+    "arguments": {
+      "--source": "results.json.gz",
+      "--corrected": "results.json.gz",
+      "--output": "independent-verification.json"
+    },
+    "producing_source_revision": "0f25b3d9352781044eaba2684c257d037c0d06f7"
+  },
+  "independent_method": "directly sum reference-filtered per-pair records; no production aggregation helper",
+  "checkpoint_populations_recomputed": 24,
+  "all_candidate_summaries_unchanged": true,
+  "global_counts_pairs_and_witness_records_unchanged": true,
+  "measurements": [
+    {
+      "run_id": "20261125T205910-8eac8a31db0a",
+      "checkpoint": "initial",
+      "split": "train",
+      "entity": "pizza",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 231,
+            "subsumption_antecedent_support": 2340,
+            "subsumption_rate": 0.09871794871794871,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 38,
+            "subsumption_antecedent_support": 304,
+            "subsumption_rate": 0.125,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 666,
+            "subsumption_antecedent_support": 4832,
+            "subsumption_rate": 0.13783112582781457,
+            "disjointness_violations": 32540,
+            "disjointness_eligible_opportunities": 853200,
+            "disjointness_rate": 0.03813877168307548
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 90,
+            "subsumption_antecedent_support": 621,
+            "subsumption_rate": 0.14492753623188406,
+            "disjointness_violations": 4269,
+            "disjointness_eligible_opportunities": 490590,
+            "disjointness_rate": 0.00870176725983
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 435,
+            "reference_disjointness_violation_count": 32540,
+            "disjointness_cross_supervision_eligible_opportunities": 853200
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 52,
+            "reference_disjointness_violation_count": 4269,
+            "disjointness_cross_supervision_eligible_opportunities": 853200
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T205910-8eac8a31db0a",
+      "checkpoint": "initial",
+      "split": "train",
+      "entity": "component",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 913012,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 3886470,
+            "disjointness_eligible_opportunities": 3886470,
+            "disjointness_rate": 1.0
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 1628,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 6930,
+            "disjointness_eligible_opportunities": 6930,
+            "disjointness_rate": 1.0
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 1826024,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 14620530,
+            "disjointness_eligible_opportunities": 14620530,
+            "disjointness_rate": 1.0
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 3256,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 26070,
+            "disjointness_eligible_opportunities": 26070,
+            "disjointness_rate": 1.0
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 0,
+            "reference_disjointness_violation_count": 10734060,
+            "disjointness_cross_supervision_eligible_opportunities": 10734060
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 0,
+            "reference_disjointness_violation_count": 19140,
+            "disjointness_cross_supervision_eligible_opportunities": 10734060
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T205910-8eac8a31db0a",
+      "checkpoint": "initial",
+      "split": "validation",
+      "entity": "pizza",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 106,
+            "subsumption_antecedent_support": 759,
+            "subsumption_rate": 0.13965744400527008,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 38,
+            "subsumption_antecedent_support": 219,
+            "subsumption_rate": 0.1735159817351598,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 269,
+            "subsumption_antecedent_support": 1572,
+            "subsumption_rate": 0.17111959287531806,
+            "disjointness_violations": 9992,
+            "disjointness_eligible_opportunities": 284400,
+            "disjointness_rate": 0.035133614627285516
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 66,
+            "subsumption_antecedent_support": 443,
+            "subsumption_rate": 0.1489841986455982,
+            "disjointness_violations": 2872,
+            "disjointness_eligible_opportunities": 206190,
+            "disjointness_rate": 0.013928900528638634
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 163,
+            "reference_disjointness_violation_count": 9992,
+            "disjointness_cross_supervision_eligible_opportunities": 284400
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 28,
+            "reference_disjointness_violation_count": 2872,
+            "disjointness_cross_supervision_eligible_opportunities": 284400
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T205910-8eac8a31db0a",
+      "checkpoint": "initial",
+      "split": "validation",
+      "entity": "component",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 298072,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 1268820,
+            "disjointness_eligible_opportunities": 1268820,
+            "disjointness_rate": 1.0
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 1628,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 6930,
+            "disjointness_eligible_opportunities": 6930,
+            "disjointness_rate": 1.0
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 596144,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 4773180,
+            "disjointness_eligible_opportunities": 4773180,
+            "disjointness_rate": 1.0
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 3256,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 26070,
+            "disjointness_eligible_opportunities": 26070,
+            "disjointness_rate": 1.0
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 0,
+            "reference_disjointness_violation_count": 3504360,
+            "disjointness_cross_supervision_eligible_opportunities": 3504360
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 0,
+            "reference_disjointness_violation_count": 19140,
+            "disjointness_cross_supervision_eligible_opportunities": 3504360
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T205910-8eac8a31db0a",
+      "checkpoint": "best",
+      "split": "train",
+      "entity": "pizza",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 8523,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 4895,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 78,
+            "subsumption_antecedent_support": 9876,
+            "subsumption_rate": 0.007897934386391251,
+            "disjointness_violations": 5343,
+            "disjointness_eligible_opportunities": 853200,
+            "disjointness_rate": 0.006262306610407877
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 60,
+            "subsumption_antecedent_support": 5724,
+            "subsumption_rate": 0.010482180293501049,
+            "disjointness_violations": 3222,
+            "disjointness_eligible_opportunities": 490590,
+            "disjointness_rate": 0.006567602274811961
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 78,
+            "reference_disjointness_violation_count": 5343,
+            "disjointness_cross_supervision_eligible_opportunities": 853200
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 60,
+            "reference_disjointness_violation_count": 3222,
+            "disjointness_cross_supervision_eligible_opportunities": 853200
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T205910-8eac8a31db0a",
+      "checkpoint": "best",
+      "split": "train",
+      "entity": "component",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 92598,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 3886470,
+            "disjointness_rate": 0.0
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 144,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 6930,
+            "disjointness_rate": 0.0
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 174,
+            "subsumption_antecedent_support": 175173,
+            "subsumption_rate": 0.000993303762566149,
+            "disjointness_violations": 177832,
+            "disjointness_eligible_opportunities": 14620530,
+            "disjointness_rate": 0.012163170555376584
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 1,
+            "subsumption_antecedent_support": 254,
+            "subsumption_rate": 0.003937007874015748,
+            "disjointness_violations": 244,
+            "disjointness_eligible_opportunities": 26070,
+            "disjointness_rate": 0.009359416954353663
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 174,
+            "reference_disjointness_violation_count": 177832,
+            "disjointness_cross_supervision_eligible_opportunities": 10734060
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 1,
+            "reference_disjointness_violation_count": 244,
+            "disjointness_cross_supervision_eligible_opportunities": 10734060
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T205910-8eac8a31db0a",
+      "checkpoint": "best",
+      "split": "validation",
+      "entity": "pizza",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 2799,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 2005,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 31,
+            "subsumption_antecedent_support": 3243,
+            "subsumption_rate": 0.009559050262102992,
+            "disjointness_violations": 1687,
+            "disjointness_eligible_opportunities": 284400,
+            "disjointness_rate": 0.005931786216596343
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 24,
+            "subsumption_antecedent_support": 2329,
+            "subsumption_rate": 0.010304851867754402,
+            "disjointness_violations": 1212,
+            "disjointness_eligible_opportunities": 206190,
+            "disjointness_rate": 0.005878073621417139
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 31,
+            "reference_disjointness_violation_count": 1687,
+            "disjointness_cross_supervision_eligible_opportunities": 284400
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 24,
+            "reference_disjointness_violation_count": 1212,
+            "disjointness_cross_supervision_eligible_opportunities": 284400
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T205910-8eac8a31db0a",
+      "checkpoint": "best",
+      "split": "validation",
+      "entity": "component",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 30122,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 1268820,
+            "disjointness_rate": 0.0
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 144,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 6930,
+            "disjointness_rate": 0.0
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 69,
+            "subsumption_antecedent_support": 56924,
+            "subsumption_rate": 0.0012121425057972032,
+            "disjointness_violations": 57660,
+            "disjointness_eligible_opportunities": 4773180,
+            "disjointness_rate": 0.012079996983143314
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 1,
+            "subsumption_antecedent_support": 254,
+            "subsumption_rate": 0.003937007874015748,
+            "disjointness_violations": 244,
+            "disjointness_eligible_opportunities": 26070,
+            "disjointness_rate": 0.009359416954353663
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 69,
+            "reference_disjointness_violation_count": 57660,
+            "disjointness_cross_supervision_eligible_opportunities": 3504360
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 1,
+            "reference_disjointness_violation_count": 244,
+            "disjointness_cross_supervision_eligible_opportunities": 3504360
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T205910-8eac8a31db0a",
+      "checkpoint": "latest",
+      "split": "train",
+      "entity": "pizza",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 8517,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 4887,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 34,
+            "subsumption_antecedent_support": 9414,
+            "subsumption_rate": 0.0036116422349691947,
+            "disjointness_violations": 3845,
+            "disjointness_eligible_opportunities": 853200,
+            "disjointness_rate": 0.0045065635255508675
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 29,
+            "subsumption_antecedent_support": 5390,
+            "subsumption_rate": 0.005380333951762523,
+            "disjointness_violations": 2118,
+            "disjointness_eligible_opportunities": 490590,
+            "disjointness_rate": 0.004317250657371736
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 34,
+            "reference_disjointness_violation_count": 3845,
+            "disjointness_cross_supervision_eligible_opportunities": 853200
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 29,
+            "reference_disjointness_violation_count": 2118,
+            "disjointness_cross_supervision_eligible_opportunities": 853200
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T205910-8eac8a31db0a",
+      "checkpoint": "latest",
+      "split": "train",
+      "entity": "component",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 92598,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 3886470,
+            "disjointness_rate": 0.0
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 144,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 6930,
+            "disjointness_rate": 0.0
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 174,
+            "subsumption_antecedent_support": 174040,
+            "subsumption_rate": 0.0009997701677775224,
+            "disjointness_violations": 175003,
+            "disjointness_eligible_opportunities": 14620530,
+            "disjointness_rate": 0.011969675517918981
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 1,
+            "subsumption_antecedent_support": 251,
+            "subsumption_rate": 0.00398406374501992,
+            "disjointness_violations": 237,
+            "disjointness_eligible_opportunities": 26070,
+            "disjointness_rate": 0.00909090909090909
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 174,
+            "reference_disjointness_violation_count": 175003,
+            "disjointness_cross_supervision_eligible_opportunities": 10734060
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 1,
+            "reference_disjointness_violation_count": 237,
+            "disjointness_cross_supervision_eligible_opportunities": 10734060
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T205910-8eac8a31db0a",
+      "checkpoint": "latest",
+      "split": "validation",
+      "entity": "pizza",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 2800,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 2006,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 16,
+            "subsumption_antecedent_support": 3109,
+            "subsumption_rate": 0.005146349308459312,
+            "disjointness_violations": 1255,
+            "disjointness_eligible_opportunities": 284400,
+            "disjointness_rate": 0.004412798874824191
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 14,
+            "subsumption_antecedent_support": 2224,
+            "subsumption_rate": 0.006294964028776978,
+            "disjointness_violations": 853,
+            "disjointness_eligible_opportunities": 206190,
+            "disjointness_rate": 0.00413696105533731
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 16,
+            "reference_disjointness_violation_count": 1255,
+            "disjointness_cross_supervision_eligible_opportunities": 284400
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 14,
+            "reference_disjointness_violation_count": 853,
+            "disjointness_cross_supervision_eligible_opportunities": 284400
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T205910-8eac8a31db0a",
+      "checkpoint": "latest",
+      "split": "validation",
+      "entity": "component",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 30122,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 1268820,
+            "disjointness_rate": 0.0
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 144,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 6930,
+            "disjointness_rate": 0.0
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 69,
+            "subsumption_antecedent_support": 56663,
+            "subsumption_rate": 0.001217725852849302,
+            "disjointness_violations": 56912,
+            "disjointness_eligible_opportunities": 4773180,
+            "disjointness_rate": 0.011923288038582246
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 1,
+            "subsumption_antecedent_support": 251,
+            "subsumption_rate": 0.00398406374501992,
+            "disjointness_violations": 237,
+            "disjointness_eligible_opportunities": 26070,
+            "disjointness_rate": 0.00909090909090909
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 69,
+            "reference_disjointness_violation_count": 56912,
+            "disjointness_cross_supervision_eligible_opportunities": 3504360
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 1,
+            "reference_disjointness_violation_count": 237,
+            "disjointness_cross_supervision_eligible_opportunities": 3504360
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T212135-1c0e34f5174a",
+      "checkpoint": "initial",
+      "split": "train",
+      "entity": "pizza",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 1241,
+            "subsumption_antecedent_support": 6094,
+            "subsumption_rate": 0.20364292746964227,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 411,
+            "subsumption_antecedent_support": 1288,
+            "subsumption_rate": 0.3190993788819876,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 2790,
+            "subsumption_antecedent_support": 12779,
+            "subsumption_rate": 0.2183269426402692,
+            "disjointness_violations": 79692,
+            "disjointness_eligible_opportunities": 853200,
+            "disjointness_rate": 0.09340365682137834
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 907,
+            "subsumption_antecedent_support": 2677,
+            "subsumption_rate": 0.3388121031004856,
+            "disjointness_violations": 14131,
+            "disjointness_eligible_opportunities": 490590,
+            "disjointness_rate": 0.028804093030840416
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 1549,
+            "reference_disjointness_violation_count": 79692,
+            "disjointness_cross_supervision_eligible_opportunities": 853200
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 496,
+            "reference_disjointness_violation_count": 14131,
+            "disjointness_cross_supervision_eligible_opportunities": 853200
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T212135-1c0e34f5174a",
+      "checkpoint": "initial",
+      "split": "train",
+      "entity": "component",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 913012,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 3886470,
+            "disjointness_eligible_opportunities": 3886470,
+            "disjointness_rate": 1.0
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 1628,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 6930,
+            "disjointness_eligible_opportunities": 6930,
+            "disjointness_rate": 1.0
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 1826024,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 14620530,
+            "disjointness_eligible_opportunities": 14620530,
+            "disjointness_rate": 1.0
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 3256,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 26070,
+            "disjointness_eligible_opportunities": 26070,
+            "disjointness_rate": 1.0
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 0,
+            "reference_disjointness_violation_count": 10734060,
+            "disjointness_cross_supervision_eligible_opportunities": 10734060
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 0,
+            "reference_disjointness_violation_count": 19140,
+            "disjointness_cross_supervision_eligible_opportunities": 10734060
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T212135-1c0e34f5174a",
+      "checkpoint": "initial",
+      "split": "validation",
+      "entity": "pizza",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 413,
+            "subsumption_antecedent_support": 2293,
+            "subsumption_rate": 0.18011338857392062,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 232,
+            "subsumption_antecedent_support": 870,
+            "subsumption_rate": 0.26666666666666666,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 942,
+            "subsumption_antecedent_support": 4723,
+            "subsumption_rate": 0.19944950243489307,
+            "disjointness_violations": 29864,
+            "disjointness_eligible_opportunities": 284400,
+            "disjointness_rate": 0.1050070323488045
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 519,
+            "subsumption_antecedent_support": 1783,
+            "subsumption_rate": 0.29108244531688166,
+            "disjointness_violations": 10185,
+            "disjointness_eligible_opportunities": 206190,
+            "disjointness_rate": 0.04939618798195839
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 529,
+            "reference_disjointness_violation_count": 29864,
+            "disjointness_cross_supervision_eligible_opportunities": 284400
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 287,
+            "reference_disjointness_violation_count": 10185,
+            "disjointness_cross_supervision_eligible_opportunities": 284400
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T212135-1c0e34f5174a",
+      "checkpoint": "initial",
+      "split": "validation",
+      "entity": "component",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 298072,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 1268820,
+            "disjointness_eligible_opportunities": 1268820,
+            "disjointness_rate": 1.0
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 1628,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 6930,
+            "disjointness_eligible_opportunities": 6930,
+            "disjointness_rate": 1.0
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 596144,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 4773180,
+            "disjointness_eligible_opportunities": 4773180,
+            "disjointness_rate": 1.0
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 3256,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 26070,
+            "disjointness_eligible_opportunities": 26070,
+            "disjointness_rate": 1.0
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 0,
+            "reference_disjointness_violation_count": 3504360,
+            "disjointness_cross_supervision_eligible_opportunities": 3504360
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 0,
+            "reference_disjointness_violation_count": 19140,
+            "disjointness_cross_supervision_eligible_opportunities": 3504360
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T212135-1c0e34f5174a",
+      "checkpoint": "best",
+      "split": "train",
+      "entity": "pizza",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 1,
+            "subsumption_antecedent_support": 8527,
+            "subsumption_rate": 0.00011727453969743169,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 1,
+            "subsumption_antecedent_support": 4921,
+            "subsumption_rate": 0.000203210729526519,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 810,
+            "subsumption_antecedent_support": 10903,
+            "subsumption_rate": 0.07429147940933688,
+            "disjointness_violations": 8953,
+            "disjointness_eligible_opportunities": 853200,
+            "disjointness_rate": 0.010493436474449133
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 353,
+            "subsumption_antecedent_support": 6049,
+            "subsumption_rate": 0.058356753182344186,
+            "disjointness_violations": 4276,
+            "disjointness_eligible_opportunities": 490590,
+            "disjointness_rate": 0.008716035793636234
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 809,
+            "reference_disjointness_violation_count": 8953,
+            "disjointness_cross_supervision_eligible_opportunities": 853200
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 352,
+            "reference_disjointness_violation_count": 4276,
+            "disjointness_cross_supervision_eligible_opportunities": 853200
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T212135-1c0e34f5174a",
+      "checkpoint": "best",
+      "split": "train",
+      "entity": "component",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 92598,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 3886470,
+            "disjointness_rate": 0.0
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 144,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 6930,
+            "disjointness_rate": 0.0
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 945,
+            "subsumption_antecedent_support": 209765,
+            "subsumption_rate": 0.004505041355802922,
+            "disjointness_violations": 224328,
+            "disjointness_eligible_opportunities": 14620530,
+            "disjointness_rate": 0.015343356225800296
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 6,
+            "subsumption_antecedent_support": 311,
+            "subsumption_rate": 0.01929260450160772,
+            "disjointness_violations": 324,
+            "disjointness_eligible_opportunities": 26070,
+            "disjointness_rate": 0.012428078250863062
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 945,
+            "reference_disjointness_violation_count": 224328,
+            "disjointness_cross_supervision_eligible_opportunities": 10734060
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 6,
+            "reference_disjointness_violation_count": 324,
+            "disjointness_cross_supervision_eligible_opportunities": 10734060
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T212135-1c0e34f5174a",
+      "checkpoint": "best",
+      "split": "validation",
+      "entity": "pizza",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 2827,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 2045,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 263,
+            "subsumption_antecedent_support": 3638,
+            "subsumption_rate": 0.07229246838922485,
+            "disjointness_violations": 3006,
+            "disjointness_eligible_opportunities": 284400,
+            "disjointness_rate": 0.010569620253164557
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 153,
+            "subsumption_antecedent_support": 2554,
+            "subsumption_rate": 0.05990602975724354,
+            "disjointness_violations": 1900,
+            "disjointness_eligible_opportunities": 206190,
+            "disjointness_rate": 0.009214801881759542
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 263,
+            "reference_disjointness_violation_count": 3006,
+            "disjointness_cross_supervision_eligible_opportunities": 284400
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 153,
+            "reference_disjointness_violation_count": 1900,
+            "disjointness_cross_supervision_eligible_opportunities": 284400
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T212135-1c0e34f5174a",
+      "checkpoint": "best",
+      "split": "validation",
+      "entity": "component",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 30122,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 1268820,
+            "disjointness_rate": 0.0
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 144,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 6930,
+            "disjointness_rate": 0.0
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 320,
+            "subsumption_antecedent_support": 68037,
+            "subsumption_rate": 0.004703323191792701,
+            "disjointness_violations": 72558,
+            "disjointness_eligible_opportunities": 4773180,
+            "disjointness_rate": 0.015201186630296784
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 6,
+            "subsumption_antecedent_support": 311,
+            "subsumption_rate": 0.01929260450160772,
+            "disjointness_violations": 324,
+            "disjointness_eligible_opportunities": 26070,
+            "disjointness_rate": 0.012428078250863062
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 320,
+            "reference_disjointness_violation_count": 72558,
+            "disjointness_cross_supervision_eligible_opportunities": 3504360
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 6,
+            "reference_disjointness_violation_count": 324,
+            "disjointness_cross_supervision_eligible_opportunities": 3504360
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T212135-1c0e34f5174a",
+      "checkpoint": "latest",
+      "split": "train",
+      "entity": "pizza",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 8506,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 4915,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 680,
+            "subsumption_antecedent_support": 10990,
+            "subsumption_rate": 0.06187443130118289,
+            "disjointness_violations": 9571,
+            "disjointness_eligible_opportunities": 853200,
+            "disjointness_rate": 0.011217768401312705
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 323,
+            "subsumption_antecedent_support": 6127,
+            "subsumption_rate": 0.05271748000652848,
+            "disjointness_violations": 4798,
+            "disjointness_eligible_opportunities": 490590,
+            "disjointness_rate": 0.009780060743186774
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 680,
+            "reference_disjointness_violation_count": 9571,
+            "disjointness_cross_supervision_eligible_opportunities": 853200
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 323,
+            "reference_disjointness_violation_count": 4798,
+            "disjointness_cross_supervision_eligible_opportunities": 853200
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T212135-1c0e34f5174a",
+      "checkpoint": "latest",
+      "split": "train",
+      "entity": "component",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 92598,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 3886470,
+            "disjointness_rate": 0.0
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 144,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 6930,
+            "disjointness_rate": 0.0
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 1042,
+            "subsumption_antecedent_support": 214109,
+            "subsumption_rate": 0.0048666800554857574,
+            "disjointness_violations": 234542,
+            "disjointness_eligible_opportunities": 14620530,
+            "disjointness_rate": 0.01604196291105726
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 7,
+            "subsumption_antecedent_support": 326,
+            "subsumption_rate": 0.02147239263803681,
+            "disjointness_violations": 352,
+            "disjointness_eligible_opportunities": 26070,
+            "disjointness_rate": 0.01350210970464135
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 1042,
+            "reference_disjointness_violation_count": 234542,
+            "disjointness_cross_supervision_eligible_opportunities": 10734060
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 7,
+            "reference_disjointness_violation_count": 352,
+            "disjointness_cross_supervision_eligible_opportunities": 10734060
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T212135-1c0e34f5174a",
+      "checkpoint": "latest",
+      "split": "validation",
+      "entity": "pizza",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 2810,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 2030,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 0,
+            "disjointness_rate": null
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 229,
+            "subsumption_antecedent_support": 3618,
+            "subsumption_rate": 0.0632946379215036,
+            "disjointness_violations": 3099,
+            "disjointness_eligible_opportunities": 284400,
+            "disjointness_rate": 0.01089662447257384
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 138,
+            "subsumption_antecedent_support": 2542,
+            "subsumption_rate": 0.05428796223446106,
+            "disjointness_violations": 2004,
+            "disjointness_eligible_opportunities": 206190,
+            "disjointness_rate": 0.009719191037392697
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 229,
+            "reference_disjointness_violation_count": 3099,
+            "disjointness_cross_supervision_eligible_opportunities": 284400
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 138,
+            "reference_disjointness_violation_count": 2004,
+            "disjointness_cross_supervision_eligible_opportunities": 284400
+          }
+        }
+      }
+    },
+    {
+      "run_id": "20261125T212135-1c0e34f5174a",
+      "checkpoint": "latest",
+      "split": "validation",
+      "entity": "component",
+      "measurements": {
+        "supervision_restricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 30122,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 1268820,
+            "disjointness_rate": 0.0
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 0,
+            "subsumption_antecedent_support": 144,
+            "subsumption_rate": 0.0,
+            "disjointness_violations": 0,
+            "disjointness_eligible_opportunities": 6930,
+            "disjointness_rate": 0.0
+          }
+        },
+        "unrestricted": {
+          "occurrence_weighted": {
+            "subsumption_violations": 352,
+            "subsumption_antecedent_support": 69606,
+            "subsumption_rate": 0.005057035313047725,
+            "disjointness_violations": 76086,
+            "disjointness_eligible_opportunities": 4773180,
+            "disjointness_rate": 0.015940316518547385
+          },
+          "distinct_embedding": {
+            "subsumption_violations": 7,
+            "subsumption_antecedent_support": 326,
+            "subsumption_rate": 0.02147239263803681,
+            "disjointness_violations": 352,
+            "disjointness_eligible_opportunities": 26070,
+            "disjointness_rate": 0.01350210970464135
+          }
+        },
+        "violations_outside_joint_supervision": {
+          "occurrence_weighted": {
+            "reference_subsumption_violation_count": 352,
+            "reference_disjointness_violation_count": 76086,
+            "disjointness_cross_supervision_eligible_opportunities": 3504360
+          },
+          "distinct_embedding": {
+            "reference_subsumption_violation_count": 7,
+            "reference_disjointness_violation_count": 352,
+            "disjointness_cross_supervision_eligible_opportunities": 3504360
+          }
+        }
+      }
+    }
+  ]
+}
