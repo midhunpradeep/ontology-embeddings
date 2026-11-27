@@ -1,0 +1,29 @@
+name: Lean verification
+
+on:
+  push:
+    paths:
+      - 'formal/**'
+      - '.github/workflows/lean.yml'
+  pull_request:
+    paths:
+      - 'formal/**'
+      - '.github/workflows/lean.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-lean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: formal
+          build: false
+          use-mathlib-cache: true
+      - name: Build and audit formal project
+        run: formal/scripts/verify.sh

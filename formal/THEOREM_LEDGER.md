@@ -1,0 +1,26 @@
+# Lean theorem ledger
+
+This ledger records the LEAN-00 work only. Identifiers are stable even if Lean names or file layout later change. All statements are over an arbitrary type `α`, sets `carrier`, concepts as sets `a`, `b`, etc., and the carrier-relative definitions in `OntologyEmbeddings/Semantics.lean`; there is no nonempty-carrier assumption. The formal source, not this prose, is authoritative for the exact proposition.
+
+Status vocabulary: proposed, proved, disproved, blocked. `Proved` means the checked Lean declaration compiles; it does not itself mean the proposition is the intended thesis claim. For each item, the recorded LEAN-00 specification is the current statement-approval reference. Independent reviewer status is separate and currently **not reviewed** for all entries.
+
+| ID | Human-readable statement; domain / assumptions | Lean declaration (source) | Status | Verification evidence / counterexample | Thesis relevance | Independent review |
+|---|---|---|---|---|---|---|
+| L00-S01 | A concept subsumes itself within any carrier. Arbitrary `α`, sets `carrier`, `a`. | `OntologyEmbeddings.Semantics.subsumes_refl` (`OntologyEmbeddings/Semantics.lean`) | proved | `formal/scripts/verify.sh` passed; no axioms. | Basic formal relation only; no implementation-conformance claim. | not reviewed |
+| L00-S02 | Carrier-relative subsumption is transitive. Arbitrary `α`, `carrier`, `a`, `b`, `c`. | `OntologyEmbeddings.Semantics.subsumes_trans` | proved | verifier passed; no axioms. | Basic formal relation only. | not reviewed |
+| L00-S03 | Two concepts are equivalent on the carrier iff each subsumes the other there. Arbitrary `α`, carrier and concepts. | `OntologyEmbeddings.Semantics.equivalent_iff_mutually_subsumes` | proved | verifier passed; no axioms. | Relates two set-based definitions; no Python equivalence claim. | not reviewed |
+| L00-S04 | Carrier-relative disjointness is symmetric. Arbitrary `α`, carrier and concepts. | `OntologyEmbeddings.Semantics.disjoint_symm` | proved | verifier passed; no axioms. | Basic formal relation only. | not reviewed |
+| L00-S05 | Two concepts are disjoint on the carrier iff their carrier-restricted conjunction is equivalent there to bottom. Arbitrary `α`, carrier and concepts. | `OntologyEmbeddings.Semantics.disjoint_iff_conjunction_equivalent_bottom` | proved | verifier passed; dependency `propext` (Lean set extensionality foundation). | Set-semantics identity, not a learned BOX decision procedure. | not reviewed |
+| L00-S06 | For a point in the carrier, membership in carrier-relative complement iff it is not a member of the concept on that carrier. Arbitrary `α`, carrier, concept, `x ∈ carrier`. | `OntologyEmbeddings.Semantics.complement_member_iff_not_member` | proved | verifier passed; dependency `propext`. | Clarifies complement relative to chosen carrier. | not reviewed |
+| L00-S07 | For any point, it is a member of a concept or not a member. Arbitrary `α`, carrier, concept and point. | `OntologyEmbeddings.Semantics.concept_excluded_middle` | proved | verifier passed; dependencies `propext`, `Classical.choice`, `Quot.sound`; proof explicitly uses `classical`. | Classical logical principle; says nothing about absence of observed labels. | not reviewed |
+| L00-S08 | A point cannot both be and not be a member of the same concept. Arbitrary `α`, carrier, concept and point. | `OntologyEmbeddings.Semantics.concept_noncontradiction` | proved | verifier passed; no axioms. | Basic logical property only. | not reviewed |
+| L00-S09 | `true` is a member of the example concept on the finite Bool carrier. | `OntologyEmbeddings.Semantics.example_positive_membership` | proved | verifier passed; dependency `propext`. | Elementary executable-style example; no dataset result. | not reviewed |
+| L00-S10 | `false` is not a member of that example concept. | `OntologyEmbeddings.Semantics.example_negative_membership` | proved | verifier passed; dependency `propext`. | Elementary example only. | not reviewed |
+| L00-S11 | `true` can be a member even when it lacks a positive annotation. | `OntologyEmbeddings.Semantics.example_unlabeled_point_can_be_a_member` | proved | verifier passed; dependency `propext`. | Separates semantic membership from observed positive labels; not a dataset labeling claim. | not reviewed |
+
+## Minimal research procedure for future entries
+
+1. **Author approval:** record the human statement, carrier/domain, assumptions, and intended thesis relevance before formalizing it. Do not silently change the statement to fit a proof.
+2. **Formalization:** assign the next stable ID, choose/record a Lean declaration, and attempt a proof. If blocked or a counterexample is found, update status and evidence rather than weakening the claim.
+3. **Independent review:** a reviewer checks the informal-to-formal correspondence, assumptions/domain, relevance, proof dependencies, and counterexample if applicable; record identity/date or leave `not reviewed`.
+4. **Mechanical verification:** run `formal/scripts/verify.sh`; record result and audited dependencies. Lean's kernel checks proof validity for the formal declaration and its assumptions. It does not decide author intent, model correspondence, or scientific relevance.
