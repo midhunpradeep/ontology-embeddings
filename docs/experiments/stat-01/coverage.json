@@ -1,0 +1,1376 @@
+{
+  "generator_source": {
+    "generator_commit": "6c0bcb221a957c184012beaf103bebcde4b1f793",
+    "generator_license": "CC BY-NC 4.0",
+    "generator_repository": "https://github.com/SysReIC/pizzaiolo.git",
+    "image_label_inference": "audited fourth_attempt infer_pizzaiolo_label predicates; 32 overlapping image-level classes",
+    "preparation_commit": "2fa1fcf4fd93e6e2c8fbb8260e82c7b81d1e2717",
+    "preparation_dirty": false,
+    "preparation_package_version": "0.1.0",
+    "raw_master_canonicalization": "hasTopping set values sorted lexicographically; source ordering is nondeterministic and semantically unordered",
+    "raw_master_csv": "audit/generator_master.csv"
+  },
+  "pinned_generator_revision_inspected": "6c0bcb221a957c184012beaf103bebcde4b1f793",
+  "generator_rules": {
+    "named_recipe": "pinned preparePizza uses ontology class hasTopping/hasBase/hasCountryOfOrigin",
+    "random_recipe": "pinned preparePizza chooses set(choices(toppings, k=randrange(1,6))); 1-5 unique types; base among PizzaBase descendants; origin one of four named countries or None",
+    "topping_instance_bounds": {
+      "AnchovyTopping": [
+        3,
+        5
+      ],
+      "GarlicTopping": [
+        3,
+        6
+      ],
+      "GreenPepperTopping": [
+        5,
+        7
+      ],
+      "HamTopping": [
+        3,
+        4
+      ],
+      "JalapenoPepperTopping": [
+        2,
+        4
+      ],
+      "MushroomTopping": [
+        6,
+        10
+      ],
+      "OliveTopping": [
+        6,
+        10
+      ],
+      "OnionTopping": [
+        3,
+        5
+      ],
+      "ParmesanTopping": [
+        1,
+        1
+      ],
+      "PeperonataTopping": [
+        1,
+        1
+      ],
+      "PeperoniSausageTopping": [
+        5,
+        7
+      ],
+      "PrawnTopping": [
+        5,
+        8
+      ],
+      "RocketTopping": [
+        2,
+        4
+      ],
+      "SlicedTomatoTopping": [
+        4,
+        6
+      ],
+      "SpinachTopping": [
+        2,
+        4
+      ],
+      "SultanaTopping": [
+        6,
+        10
+      ]
+    },
+    "bound_interpretation": "Number of sprite placements sampled per type before clipping; saved visible box/count can differ after overlap/clipping.",
+    "retry_rule": "Pinned generator recursively retries when topping overlap rate exceeds 0.40"
+  },
+  "observed_combinations_by_generator_type": {
+    "American": [
+      {
+        "combination": [
+          "PeperonataTopping",
+          "PeperoniSausageTopping"
+        ],
+        "count": 60
+      }
+    ],
+    "AmericanHot": [
+      {
+        "combination": [
+          "GreenPepperTopping",
+          "JalapenoPepperTopping",
+          "PeperoniSausageTopping"
+        ],
+        "count": 60
+      }
+    ],
+    "Cajun": [
+      {
+        "combination": [
+          "OnionTopping",
+          "PeperonataTopping",
+          "PrawnTopping"
+        ],
+        "count": 60
+      }
+    ],
+    "Capricciosa": [
+      {
+        "combination": [
+          "AnchovyTopping",
+          "HamTopping",
+          "OliveTopping",
+          "PeperonataTopping"
+        ],
+        "count": 60
+      }
+    ],
+    "Fiorentina": [
+      {
+        "combination": [
+          "GarlicTopping",
+          "OliveTopping",
+          "ParmesanTopping",
+          "SlicedTomatoTopping",
+          "SpinachTopping"
+        ],
+        "count": 60
+      }
+    ],
+    "FourSeasons": [
+      {
+        "combination": [
+          "AnchovyTopping",
+          "MushroomTopping",
+          "OliveTopping",
+          "PeperoniSausageTopping"
+        ],
+        "count": 60
+      }
+    ],
+    "Giardiniera": [
+      {
+        "combination": [
+          "JalapenoPepperTopping",
+          "MushroomTopping",
+          "OliveTopping",
+          "SlicedTomatoTopping"
+        ],
+        "count": 60
+      }
+    ],
+    "LaReine": [
+      {
+        "combination": [
+          "HamTopping",
+          "MushroomTopping",
+          "OliveTopping"
+        ],
+        "count": 60
+      }
+    ],
+    "Mushroom": [
+      {
+        "combination": [
+          "MushroomTopping"
+        ],
+        "count": 60
+      }
+    ],
+    "Napoletana": [
+      {
+        "combination": [
+          "AnchovyTopping",
+          "OliveTopping"
+        ],
+        "count": 60
+      }
+    ],
+    "Parmense": [
+      {
+        "combination": [
+          "HamTopping",
+          "ParmesanTopping"
+        ],
+        "count": 60
+      }
+    ],
+    "Siciliana": [
+      {
+        "combination": [
+          "AnchovyTopping",
+          "GarlicTopping",
+          "HamTopping",
+          "OliveTopping"
+        ],
+        "count": 60
+      }
+    ],
+    "SloppyGiuseppe": [
+      {
+        "combination": [
+          "GreenPepperTopping",
+          "OnionTopping"
+        ],
+        "count": 60
+      }
+    ],
+    "Soho": [
+      {
+        "combination": [
+          "GarlicTopping",
+          "OliveTopping",
+          "ParmesanTopping",
+          "RocketTopping"
+        ],
+        "count": 60
+      }
+    ],
+    "Veneziana": [
+      {
+        "combination": [
+          "OliveTopping",
+          "OnionTopping",
+          "SultanaTopping"
+        ],
+        "count": 60
+      }
+    ],
+    "random": [
+      {
+        "combination": [
+          "AnchovyTopping",
+          "GarlicTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "AnchovyTopping",
+          "GarlicTopping",
+          "HamTopping",
+          "MushroomTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "AnchovyTopping",
+          "GarlicTopping",
+          "MushroomTopping",
+          "OnionTopping",
+          "PeperonataTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "AnchovyTopping",
+          "GarlicTopping",
+          "PeperonataTopping",
+          "SpinachTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "AnchovyTopping",
+          "HamTopping",
+          "JalapenoPepperTopping",
+          "MushroomTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "AnchovyTopping",
+          "JalapenoPepperTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "AnchovyTopping",
+          "OnionTopping",
+          "ParmesanTopping",
+          "PeperonataTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "AnchovyTopping",
+          "PrawnTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "GarlicTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "GarlicTopping",
+          "GreenPepperTopping",
+          "OnionTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "GarlicTopping",
+          "MushroomTopping",
+          "OliveTopping",
+          "SlicedTomatoTopping",
+          "SultanaTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "GarlicTopping",
+          "OliveTopping",
+          "PeperoniSausageTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "GarlicTopping",
+          "PeperonataTopping",
+          "PrawnTopping",
+          "SultanaTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "GarlicTopping",
+          "PrawnTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "GarlicTopping",
+          "RocketTopping",
+          "SlicedTomatoTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "GreenPepperTopping"
+        ],
+        "count": 3
+      },
+      {
+        "combination": [
+          "GreenPepperTopping",
+          "HamTopping",
+          "JalapenoPepperTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "GreenPepperTopping",
+          "HamTopping",
+          "PeperonataTopping",
+          "SultanaTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "GreenPepperTopping",
+          "JalapenoPepperTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "GreenPepperTopping",
+          "OliveTopping",
+          "ParmesanTopping",
+          "PeperonataTopping",
+          "RocketTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "GreenPepperTopping",
+          "OnionTopping",
+          "PeperonataTopping",
+          "SpinachTopping",
+          "SultanaTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "GreenPepperTopping",
+          "OnionTopping",
+          "SultanaTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "HamTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "HamTopping",
+          "JalapenoPepperTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "HamTopping",
+          "MushroomTopping",
+          "OliveTopping",
+          "PeperonataTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "HamTopping",
+          "MushroomTopping",
+          "SpinachTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "HamTopping",
+          "OliveTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "HamTopping",
+          "OnionTopping",
+          "SultanaTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "HamTopping",
+          "PeperonataTopping",
+          "SpinachTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "JalapenoPepperTopping",
+          "OliveTopping",
+          "SlicedTomatoTopping",
+          "SpinachTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "JalapenoPepperTopping",
+          "PeperonataTopping",
+          "PrawnTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "JalapenoPepperTopping",
+          "PeperoniSausageTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "JalapenoPepperTopping",
+          "SpinachTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "MushroomTopping",
+          "PeperoniSausageTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "OliveTopping"
+        ],
+        "count": 2
+      },
+      {
+        "combination": [
+          "OliveTopping",
+          "ParmesanTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "OliveTopping",
+          "ParmesanTopping",
+          "PeperonataTopping",
+          "PrawnTopping",
+          "SpinachTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "OliveTopping",
+          "ParmesanTopping",
+          "SlicedTomatoTopping"
+        ],
+        "count": 2
+      },
+      {
+        "combination": [
+          "OliveTopping",
+          "RocketTopping",
+          "SlicedTomatoTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "OliveTopping",
+          "SpinachTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "OnionTopping",
+          "ParmesanTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "OnionTopping",
+          "PeperonataTopping",
+          "SultanaTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "ParmesanTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "ParmesanTopping",
+          "PrawnTopping",
+          "RocketTopping",
+          "SpinachTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "ParmesanTopping",
+          "SlicedTomatoTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "PeperonataTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "PeperoniSausageTopping"
+        ],
+        "count": 3
+      },
+      {
+        "combination": [
+          "PrawnTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "SlicedTomatoTopping"
+        ],
+        "count": 2
+      },
+      {
+        "combination": [
+          "SlicedTomatoTopping",
+          "SpinachTopping"
+        ],
+        "count": 1
+      },
+      {
+        "combination": [
+          "SpinachTopping",
+          "SultanaTopping"
+        ],
+        "count": 2
+      },
+      {
+        "combination": [
+          "SultanaTopping"
+        ],
+        "count": 1
+      }
+    ]
+  },
+  "configured_generator_types": [
+    "American",
+    "AmericanHot",
+    "Cajun",
+    "Capricciosa",
+    "Fiorentina",
+    "FourSeasons",
+    "Giardiniera",
+    "LaReine",
+    "Mushroom",
+    "Napoletana",
+    "Parmense",
+    "Siciliana",
+    "SloppyGiuseppe",
+    "Soho",
+    "Veneziana",
+    "random"
+  ],
+  "configured_generator_type_counts": {
+    "American": 75,
+    "AmericanHot": 75,
+    "Cajun": 75,
+    "Capricciosa": 75,
+    "Fiorentina": 75,
+    "FourSeasons": 75,
+    "Giardiniera": 75,
+    "LaReine": 75,
+    "Mushroom": 75,
+    "Napoletana": 75,
+    "Parmense": 75,
+    "Siciliana": 75,
+    "SloppyGiuseppe": 75,
+    "Soho": 75,
+    "Veneziana": 75,
+    "random": 75
+  },
+  "observed_generator_type_counts": {
+    "FourSeasons": 60,
+    "Siciliana": 60,
+    "Giardiniera": 60,
+    "Parmense": 60,
+    "SloppyGiuseppe": 60,
+    "Fiorentina": 60,
+    "Veneziana": 60,
+    "Soho": 60,
+    "AmericanHot": 60,
+    "Napoletana": 60,
+    "Mushroom": 60,
+    "American": 60,
+    "Capricciosa": 60,
+    "random": 60,
+    "LaReine": 60,
+    "Cajun": 60
+  },
+  "available_topping_categories": [
+    "AnchovyTopping",
+    "GarlicTopping",
+    "GreenPepperTopping",
+    "HamTopping",
+    "JalapenoPepperTopping",
+    "MushroomTopping",
+    "OliveTopping",
+    "OnionTopping",
+    "ParmesanTopping",
+    "PeperonataTopping",
+    "PeperoniSausageTopping",
+    "PrawnTopping",
+    "RocketTopping",
+    "SlicedTomatoTopping",
+    "SpinachTopping",
+    "SultanaTopping"
+  ],
+  "available_base_categories": [
+    "DeepPanBase",
+    "ThinAndCrispyBase"
+  ],
+  "available_origin_categories": [
+    "America",
+    "England",
+    "France",
+    "Italy",
+    "<missing>"
+  ],
+  "observed_topping_count_distributions": {
+    "AnchovyTopping": {
+      "4.0": 72,
+      "5.0": 68,
+      "0.0": 712,
+      "3.0": 78,
+      "8.0": 2,
+      "6.0": 25,
+      "7.0": 3
+    },
+    "GarlicTopping": {
+      "0.0": 769,
+      "3.0": 44,
+      "4.0": 50,
+      "5.0": 51,
+      "6.0": 46
+    },
+    "GreenPepperTopping": {
+      "0.0": 830,
+      "7.0": 33,
+      "6.0": 41,
+      "5.0": 56
+    },
+    "HamTopping": {
+      "0.0": 709,
+      "3.0": 115,
+      "4.0": 135,
+      "5.0": 1
+    },
+    "JalapenoPepperTopping": {
+      "0.0": 831,
+      "2.0": 50,
+      "3.0": 33,
+      "4.0": 46
+    },
+    "MushroomTopping": {
+      "7.0": 45,
+      "0.0": 713,
+      "10.0": 53,
+      "8.0": 55,
+      "9.0": 56,
+      "6.0": 38
+    },
+    "OliveTopping": {
+      "7.0": 118,
+      "6.0": 119,
+      "9.0": 112,
+      "0.0": 406,
+      "10.0": 101,
+      "8.0": 104
+    },
+    "OnionTopping": {
+      "0.0": 772,
+      "4.0": 54,
+      "3.0": 63,
+      "5.0": 71
+    },
+    "ParmesanTopping": {
+      "0.0": 770,
+      "1.0": 144,
+      "2.0": 39,
+      "3.0": 7
+    },
+    "PeperonataTopping": {
+      "0.0": 767,
+      "1.0": 193
+    },
+    "PeperoniSausageTopping": {
+      "7.0": 73,
+      "0.0": 774,
+      "5.0": 45,
+      "6.0": 67,
+      "8.0": 1
+    },
+    "PrawnTopping": {
+      "0.0": 893,
+      "7.0": 18,
+      "5.0": 15,
+      "6.0": 19,
+      "8.0": 15
+    },
+    "RocketTopping": {
+      "0.0": 896,
+      "6.0": 5,
+      "4.0": 24,
+      "5.0": 8,
+      "3.0": 16,
+      "2.0": 11
+    },
+    "SlicedTomatoTopping": {
+      "0.0": 830,
+      "5.0": 51,
+      "4.0": 39,
+      "6.0": 39,
+      "7.0": 1
+    },
+    "SpinachTopping": {
+      "0.0": 888,
+      "2.0": 29,
+      "3.0": 24,
+      "4.0": 19
+    },
+    "SultanaTopping": {
+      "0.0": 890,
+      "7.0": 15,
+      "6.0": 18,
+      "8.0": 16,
+      "9.0": 8,
+      "10.0": 13
+    }
+  },
+  "observed_topping_combinations": [
+    {
+      "combination": [
+        "AnchovyTopping",
+        "GarlicTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "AnchovyTopping",
+        "GarlicTopping",
+        "HamTopping",
+        "MushroomTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "AnchovyTopping",
+        "GarlicTopping",
+        "HamTopping",
+        "OliveTopping"
+      ],
+      "count": 60
+    },
+    {
+      "combination": [
+        "AnchovyTopping",
+        "GarlicTopping",
+        "MushroomTopping",
+        "OnionTopping",
+        "PeperonataTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "AnchovyTopping",
+        "GarlicTopping",
+        "PeperonataTopping",
+        "SpinachTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "AnchovyTopping",
+        "HamTopping",
+        "JalapenoPepperTopping",
+        "MushroomTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "AnchovyTopping",
+        "HamTopping",
+        "OliveTopping",
+        "PeperonataTopping"
+      ],
+      "count": 60
+    },
+    {
+      "combination": [
+        "AnchovyTopping",
+        "JalapenoPepperTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "AnchovyTopping",
+        "MushroomTopping",
+        "OliveTopping",
+        "PeperoniSausageTopping"
+      ],
+      "count": 60
+    },
+    {
+      "combination": [
+        "AnchovyTopping",
+        "OliveTopping"
+      ],
+      "count": 60
+    },
+    {
+      "combination": [
+        "AnchovyTopping",
+        "OnionTopping",
+        "ParmesanTopping",
+        "PeperonataTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "AnchovyTopping",
+        "PrawnTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "GarlicTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "GarlicTopping",
+        "GreenPepperTopping",
+        "OnionTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "GarlicTopping",
+        "MushroomTopping",
+        "OliveTopping",
+        "SlicedTomatoTopping",
+        "SultanaTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "GarlicTopping",
+        "OliveTopping",
+        "ParmesanTopping",
+        "RocketTopping"
+      ],
+      "count": 60
+    },
+    {
+      "combination": [
+        "GarlicTopping",
+        "OliveTopping",
+        "ParmesanTopping",
+        "SlicedTomatoTopping",
+        "SpinachTopping"
+      ],
+      "count": 60
+    },
+    {
+      "combination": [
+        "GarlicTopping",
+        "OliveTopping",
+        "PeperoniSausageTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "GarlicTopping",
+        "PeperonataTopping",
+        "PrawnTopping",
+        "SultanaTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "GarlicTopping",
+        "PrawnTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "GarlicTopping",
+        "RocketTopping",
+        "SlicedTomatoTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "GreenPepperTopping"
+      ],
+      "count": 3
+    },
+    {
+      "combination": [
+        "GreenPepperTopping",
+        "HamTopping",
+        "JalapenoPepperTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "GreenPepperTopping",
+        "HamTopping",
+        "PeperonataTopping",
+        "SultanaTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "GreenPepperTopping",
+        "JalapenoPepperTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "GreenPepperTopping",
+        "JalapenoPepperTopping",
+        "PeperoniSausageTopping"
+      ],
+      "count": 60
+    },
+    {
+      "combination": [
+        "GreenPepperTopping",
+        "OliveTopping",
+        "ParmesanTopping",
+        "PeperonataTopping",
+        "RocketTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "GreenPepperTopping",
+        "OnionTopping"
+      ],
+      "count": 60
+    },
+    {
+      "combination": [
+        "GreenPepperTopping",
+        "OnionTopping",
+        "PeperonataTopping",
+        "SpinachTopping",
+        "SultanaTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "GreenPepperTopping",
+        "OnionTopping",
+        "SultanaTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "HamTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "HamTopping",
+        "JalapenoPepperTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "HamTopping",
+        "MushroomTopping",
+        "OliveTopping"
+      ],
+      "count": 60
+    },
+    {
+      "combination": [
+        "HamTopping",
+        "MushroomTopping",
+        "OliveTopping",
+        "PeperonataTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "HamTopping",
+        "MushroomTopping",
+        "SpinachTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "HamTopping",
+        "OliveTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "HamTopping",
+        "OnionTopping",
+        "SultanaTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "HamTopping",
+        "ParmesanTopping"
+      ],
+      "count": 60
+    },
+    {
+      "combination": [
+        "HamTopping",
+        "PeperonataTopping",
+        "SpinachTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "JalapenoPepperTopping",
+        "MushroomTopping",
+        "OliveTopping",
+        "SlicedTomatoTopping"
+      ],
+      "count": 60
+    },
+    {
+      "combination": [
+        "JalapenoPepperTopping",
+        "OliveTopping",
+        "SlicedTomatoTopping",
+        "SpinachTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "JalapenoPepperTopping",
+        "PeperonataTopping",
+        "PrawnTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "JalapenoPepperTopping",
+        "PeperoniSausageTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "JalapenoPepperTopping",
+        "SpinachTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "MushroomTopping"
+      ],
+      "count": 60
+    },
+    {
+      "combination": [
+        "MushroomTopping",
+        "PeperoniSausageTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "OliveTopping"
+      ],
+      "count": 2
+    },
+    {
+      "combination": [
+        "OliveTopping",
+        "OnionTopping",
+        "SultanaTopping"
+      ],
+      "count": 60
+    },
+    {
+      "combination": [
+        "OliveTopping",
+        "ParmesanTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "OliveTopping",
+        "ParmesanTopping",
+        "PeperonataTopping",
+        "PrawnTopping",
+        "SpinachTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "OliveTopping",
+        "ParmesanTopping",
+        "SlicedTomatoTopping"
+      ],
+      "count": 2
+    },
+    {
+      "combination": [
+        "OliveTopping",
+        "RocketTopping",
+        "SlicedTomatoTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "OliveTopping",
+        "SpinachTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "OnionTopping",
+        "ParmesanTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "OnionTopping",
+        "PeperonataTopping",
+        "PrawnTopping"
+      ],
+      "count": 60
+    },
+    {
+      "combination": [
+        "OnionTopping",
+        "PeperonataTopping",
+        "SultanaTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "ParmesanTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "ParmesanTopping",
+        "PrawnTopping",
+        "RocketTopping",
+        "SpinachTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "ParmesanTopping",
+        "SlicedTomatoTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "PeperonataTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "PeperonataTopping",
+        "PeperoniSausageTopping"
+      ],
+      "count": 60
+    },
+    {
+      "combination": [
+        "PeperoniSausageTopping"
+      ],
+      "count": 3
+    },
+    {
+      "combination": [
+        "PrawnTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "SlicedTomatoTopping"
+      ],
+      "count": 2
+    },
+    {
+      "combination": [
+        "SlicedTomatoTopping",
+        "SpinachTopping"
+      ],
+      "count": 1
+    },
+    {
+      "combination": [
+        "SpinachTopping",
+        "SultanaTopping"
+      ],
+      "count": 2
+    },
+    {
+      "combination": [
+        "SultanaTopping"
+      ],
+      "count": 1
+    }
+  ],
+  "observed_bases": {
+    "DeepPanBase": 210.0,
+    "ThinAndCrispyBase": 750.0
+  },
+  "observed_origins": {
+    "America": 129.0,
+    "England": 71.0,
+    "France": 135.0,
+    "Italy": 308.0,
+    "<missing>": 317.0
+  },
+  "coverage_gaps": {
+    "topping_categories_supported_but_unobserved": [],
+    "base_categories_supported_but_unobserved": [],
+    "origin_categories_supported_but_unobserved": [],
+    "evidence": "Pinned generator categories; no train/validation observation; not a claim about all output possibilities."
+  },
+  "structural_constraints": "Named recipes use ontology-declared ingredients. Random recipe topping sets contain 1-5 unique types and use the listed possible categories; exact joint generator output is not exhaustively established.",
+  "unobserved_combinations": "Not exhaustively enumerated; unsupported possibilities are classified as possibility not established.",
+  "coverage_limit": "Finite train/validation descriptions only; no generated samples or sealed test records used."
+}
