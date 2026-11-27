@@ -8,9 +8,9 @@ from ontology_embeddings.affine_smoke import load_train_validation
 from ontology_embeddings.dataset.ontology import OntologySnapshot
 from ontology_embeddings.stat01 import (
     Observation,
-    _special_entities,
     _binary_stats,
     _eligible_weights,
+    _special_entities,
     _weighted,
     accumulation,
     class_rows,
