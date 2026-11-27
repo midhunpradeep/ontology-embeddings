@@ -11,7 +11,7 @@ from typing import Any, Literal, Sequence
 import torch
 from torch import nn
 
-from .box import BoxGeometry, box_clearance, box_membership, box_objective, validate_endpoints
+from .box import BoxGeometry, box_clearance, box_membership, validate_endpoints
 from .dataset.image_data import PreparedDataset
 from .dataset.schema import DatasetRecord
 from .features import (
@@ -20,6 +20,11 @@ from .features import (
     PIZZA_FEATURE_NAMES,
 )
 from .run_store import RunRecord, _atomic_json
+from .shared_training import (
+    checked_optimizer_update,
+    invalid_optimizer_groups,
+    masked_geometric_task_loss,
+)
 from .training import _atomic_torch_save, _pack, _signature_diagnostics, _task_metrics
 
 LossKind = Literal["logistic", "hinge"]
@@ -292,22 +297,25 @@ class BoxMultiLabelModel(nn.Module):
 
 
 def _masked_box_entity_mean(scores, targets, known, applicable, *, kind, tau, margin):
-    eligible = known.bool() & applicable.bool()
-    losses = []
-    for row in range(scores.shape[0]):
-        mask = eligible[row]
-        if torch.any(mask):
-            # Selection before penalty evaluation excludes unknown/inapplicable values.
-            losses.append(
-                box_objective(
-                    scores[row, mask].unsqueeze(0),
-                    targets[row, mask].unsqueeze(0),
-                    kind=kind,
-                    tau=tau,
-                    margin=margin,
-                ).mean()
-            )
-    return torch.stack(losses).mean() if losses else None
+    """Compatibility wrapper for the shared known/applicable entity reduction."""
+    empty_scores = scores.new_empty((0, scores.shape[1]))
+    empty_targets = targets.new_empty((0, targets.shape[1]))
+    empty_mask = torch.empty((0, scores.shape[1]), dtype=torch.bool, device=scores.device)
+    loss, _ = masked_geometric_task_loss(
+        scores,
+        targets,
+        known,
+        applicable,
+        empty_scores,
+        empty_targets,
+        empty_mask,
+        empty_mask,
+        [],
+        kind=kind,
+        tau=tau,
+        margin=margin,
+    )
+    return loss
 
 
 def masked_box_task_loss(
@@ -326,48 +334,34 @@ def masked_box_task_loss(
     margin=0.1,
 ):
     """PR2 known/applicable reduction: entity, components per parent, then tasks equally."""
-    if len(component_parent) != len(component_scores):
-        raise ValueError("component_parent length mismatch")
-    p = _masked_box_entity_mean(
+    return masked_geometric_task_loss(
         pizza_scores,
         pizza_targets,
         pizza_known,
         pizza_applicable,
+        component_scores,
+        component_targets,
+        component_known,
+        component_applicable,
+        component_parent,
         kind=kind,
         tau=tau,
         margin=margin,
     )
-    entity_losses = []
-    for i, parent in enumerate(component_parent):
-        if (
-            isinstance(parent, bool)
-            or not isinstance(parent, int)
-            or not 0 <= parent < len(pizza_scores)
-        ):
-            raise ValueError("invalid component parent index")
-        val = _masked_box_entity_mean(
-            component_scores[i : i + 1],
-            component_targets[i : i + 1],
-            component_known[i : i + 1],
-            component_applicable[i : i + 1],
-            kind=kind,
-            tau=tau,
-            margin=margin,
-        )
-        entity_losses.append((parent, val))
-    parents = [
-        torch.stack(
-            [loss for owner, loss in entity_losses if owner == i and loss is not None]
-        ).mean()
-        for i in range(len(pizza_scores))
-        if any(owner == i and loss is not None for owner, loss in entity_losses)
-    ]
-    c = torch.stack(parents).mean() if parents else None
-    available = [v for v in (p, c) if v is not None]
-    return (torch.stack(available).mean() if available else None), {"pizza": p, "component": c}
 
 
-def _box_loss(model, records, dataset, device, *, kind, tau, margin, point_chunk_size=None):
+def _box_loss(
+    model,
+    records,
+    dataset,
+    device,
+    *,
+    kind,
+    tau,
+    margin,
+    point_chunk_size=None,
+    include_predictions=True,
+):
     x_p, y_p, m_p, x_c, y_c, m_c, parents = _pack(records, dataset, device)
     pizza_supervision = set(dataset.pizza_supervision_class_ids)
     component_supervision = set(dataset.component_supervision_class_ids)
@@ -381,14 +375,64 @@ def _box_loss(model, records, dataset, device, *, kind, tau, margin, point_chunk
         dtype=torch.bool,
         device=device,
     ).expand_as(y_c)
-    ps = model.clearances(x_p, "pizza", point_chunk_size=point_chunk_size)
-    cs = model.clearances(x_c, "component", point_chunk_size=point_chunk_size)
+    if point_chunk_size is not None and (
+        isinstance(point_chunk_size, bool)
+        or not isinstance(point_chunk_size, int)
+        or point_chunk_size < 1
+    ):
+        raise ValueError("point_chunk_size must be a positive integer")
+    points_p = model.encode(x_p, "pizza")
+    points_c = model.encode(x_c, "component")
+    lower, upper = model.endpoints()
+
+    def score_points(points):
+        size = max(1, len(points)) if point_chunk_size is None else point_chunk_size
+        return (
+            torch.cat(
+                [
+                    box_clearance(
+                        points[start : start + size],
+                        lower,
+                        upper,
+                        domain=model.domain,
+                        epsilon=model.epsilon,
+                    )
+                    for start in range(0, len(points), size)
+                ],
+                dim=0,
+            )
+            if len(points)
+            else points.new_empty((0, len(model.class_ids)))
+        )
+
+    def exact_membership(points):
+        if not include_predictions:
+            return None
+        size = max(1, len(points)) if point_chunk_size is None else point_chunk_size
+        return (
+            torch.cat(
+                [
+                    box_membership(
+                        points[start : start + size],
+                        lower,
+                        upper,
+                        domain=model.domain,
+                        epsilon=model.epsilon,
+                    )
+                    for start in range(0, len(points), size)
+                ],
+                dim=0,
+            )
+            if len(points)
+            else torch.empty((0, len(model.class_ids)), dtype=torch.bool, device=points.device)
+        )
+
+    ps, cs = score_points(points_p), score_points(points_c)
     total, tasks = masked_box_task_loss(
         ps, y_p, m_p, a_p, cs, y_c, m_c, a_c, parents, kind=kind, tau=tau, margin=margin
     )
-    # Exact Boolean containment, rather than the differentiable clearance sign, is authoritative.
-    pm = model.predict(x_p, "pizza", point_chunk_size=point_chunk_size)
-    cm = model.predict(x_c, "component", point_chunk_size=point_chunk_size)
+    # Exact Boolean containment remains authoritative and is evaluated independently.
+    pm, cm = exact_membership(points_p), exact_membership(points_c)
     return total, tasks, (pm, cm, y_p, m_p, y_c, m_c, a_p, a_c, parents)
 
 
@@ -562,22 +606,7 @@ def _geometry_diagnostics(model, records, dataset, device):
     }
 
 
-def _invalid_optimizer_groups(optimizer):
-    invalid = []
-    for group in optimizer.param_groups:
-        for parameter in group["params"]:
-            state = optimizer.state.get(parameter, {})
-            for value in state.values():
-                if isinstance(value, torch.Tensor) and (
-                    value.is_floating_point() or value.is_complex()
-                ):
-                    if not torch.isfinite(value).all():
-                        invalid.append(group.get("name", "unnamed"))
-                        break
-                elif isinstance(value, float) and not math.isfinite(value):
-                    invalid.append(group.get("name", "unnamed"))
-                    break
-    return sorted(set(invalid))
+_invalid_optimizer_groups = invalid_optimizer_groups
 
 
 def train_box(
@@ -830,6 +859,7 @@ def train_box(
                     tau=tau,
                     margin=margin,
                     point_chunk_size=point_chunk_size,
+                    include_predictions=False,
                 )
             if initial_validation_loss is None:
                 raise ValueError("validation has no eligible known applicable labels")
@@ -858,6 +888,7 @@ def train_box(
                 name: value.detach().clone() for name, value in model.state_dict().items()
             }
             for start in range(0, len(order), chunk):
+                # Release prior gradient buffers before constructing the next forward graph.
                 optimizer.zero_grad(set_to_none=True)
                 loss, _, _ = _box_loss(
                     model,
@@ -868,81 +899,32 @@ def train_box(
                     tau=tau,
                     margin=margin,
                     point_chunk_size=point_chunk_size,
+                    include_predictions=False,
                 )
-                if loss is None or not torch.isfinite(loss):
-                    raise FloatingPointError(
-                        f"invalid loss at update {accepted_updates + 1}; affected=loss"
-                    )
-                loss.backward()
-                grads = [p.grad for p in model.parameters() if p.grad is not None]
-                if not grads or any(not torch.isfinite(g).all() for g in grads):
-                    raise FloatingPointError(
-                        f"invalid gradients at update {accepted_updates + 1}; affected=gradients"
-                    )
-
-                def group_norm(parameters):
-                    values = [p.grad.detach() for p in parameters if p.grad is not None]
-                    return (
-                        float(torch.sqrt(sum(torch.sum(g**2) for g in values))) if values else 0.0
-                    )
-
-                encoder_pre = group_norm(
-                    [*model.pizza_adapter.parameters(), *model.component_adapter.parameters()]
+                stats = checked_optimizer_update(
+                    model,
+                    optimizer,
+                    loss,
+                    update_number=accepted_updates + 1,
+                    gradient_groups={
+                        "encoder": [
+                            *model.pizza_adapter.parameters(),
+                            *model.component_adapter.parameters(),
+                        ],
+                        "geometry": list(model.geometry.parameters()),
+                    },
+                    max_grad_norm=1.0,
+                    validate_model=lambda: validate_endpoints(
+                        *model.endpoints(), domain=domain, epsilon=epsilon
+                    ),
+                    model_name="BOX",
                 )
-                geometry_pre = group_norm(model.geometry.parameters())
-                pre_clip_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-                if not torch.isfinite(pre_clip_norm):
-                    raise FloatingPointError(
-                        f"non-finite gradient norm at update {accepted_updates + 1}; "
-                        "affected=gradient_norm"
-                    )
-                gradnorms.append(float(pre_clip_norm))
-                clipped_gradnorms.append(
-                    float(
-                        torch.sqrt(
-                            sum(
-                                torch.sum(parameter.grad.detach() ** 2)
-                                for parameter in model.parameters()
-                                if parameter.grad is not None
-                            )
-                        )
-                    )
-                )
-                if not all(
-                    torch.isfinite(p.grad).all() for p in model.parameters() if p.grad is not None
-                ):
-                    raise FloatingPointError(
-                        f"invalid clipped gradients at update {accepted_updates + 1}; "
-                        "affected=gradients"
-                    )
-                encoder_post = group_norm(
-                    [*model.pizza_adapter.parameters(), *model.component_adapter.parameters()]
-                )
-                geometry_post = group_norm(model.geometry.parameters())
-                encoder_pre_norms.append(encoder_pre)
-                geometry_pre_norms.append(geometry_pre)
-                encoder_post_norms.append(encoder_post)
-                geometry_post_norms.append(geometry_post)
-                optimizer.step()
-                invalid_parameters = [
-                    name
-                    for name, parameter in model.named_parameters()
-                    if not torch.isfinite(parameter).all()
-                ]
-                invalid_groups = _invalid_optimizer_groups(optimizer)
-                if invalid_parameters or invalid_groups:
-                    affected = sorted(set(invalid_parameters + invalid_groups))
-                    raise FloatingPointError(
-                        f"invalid BOX update {accepted_updates + 1}; affected={affected}"
-                    )
-                try:
-                    lower, upper = model.endpoints()
-                    validate_endpoints(lower, upper, domain=domain, epsilon=epsilon)
-                except (ValueError, RuntimeError) as error:
-                    raise FloatingPointError(
-                        f"invalid BOX update {accepted_updates + 1}; affected=decoded_geometry; "
-                        f"reason={error}"
-                    ) from error
+                gradnorms.append(stats["global_pre_clip_norm"])
+                clipped_gradnorms.append(stats["global_post_clip_norm"])
+                encoder_pre_norms.append(stats["group_pre_clip_norms"]["encoder"])
+                geometry_pre_norms.append(stats["group_pre_clip_norms"]["geometry"])
+                encoder_post_norms.append(stats["group_post_clip_norms"]["encoder"])
+                geometry_post_norms.append(stats["group_post_clip_norms"]["geometry"])
                 save("latest", epoch + 1)
                 accepted_updates += 1
             with torch.no_grad():

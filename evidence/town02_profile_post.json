@@ -1,0 +1,127 @@
+{
+  "phase": "post",
+  "revision": "d647fcc50576969f53fd6fe2b1ac1597fadf57d4",
+  "source_sha256": {
+    "src/ontology_embeddings/model.py": "71313050437f4b9e7f74a168aaf05f61ae2a27981fab0bb691cc626d26092840",
+    "src/ontology_embeddings/training.py": "5c39c046c0805a8b526e75fc0300a3ba462ef61282d9ed6e2cb58a1019889647",
+    "src/ontology_embeddings/box_training.py": "9bfcc735d572f1ee2c1db6ab51ede977becf2ab538f5efed878b8c26eb4c8e6f",
+    "src/ontology_embeddings/box.py": "67c2eb6e013b0a660e10616f7f7be4410dbc78748391d07647bc481a5e688f11",
+    "src/ontology_embeddings/shared_training.py": "cc1325d1565fa9a43496f953261f20006c1d7a0fed0c66440bd98e95b7d60fb8"
+  },
+  "python": "3.12.0",
+  "torch": "2.6.0+cpu",
+  "device": "cpu",
+  "cuda_available": false,
+  "threads": 1,
+  "batch_shape": {
+    "pizza": [
+      64,
+      23
+    ],
+    "components": [
+      256,
+      22
+    ],
+    "classes": 60,
+    "latent_dim": 16,
+    "boxes": 1,
+    "points_scored_for_train": 320
+  },
+  "stages": {
+    "pack_records": {
+      "median_ms": 9.105361998081207,
+      "samples_ms": [
+        9.115330991335213,
+        9.092309002880938,
+        9.726285003125668,
+        9.648245002608746,
+        9.060570999281481,
+        9.105361998081207,
+        9.061400007340126
+      ]
+    },
+    "encoding": {
+      "median_ms": 0.2318319893674925,
+      "samples_ms": [
+        0.23546999727841467,
+        0.2363319945288822,
+        0.23335698642767966,
+        0.2318319893674925,
+        0.2305349917151034,
+        0.23007200798019767,
+        0.2298829931532964
+      ]
+    },
+    "decode_score_backward": {
+      "median_ms": 10.115181998116896,
+      "samples_ms": [
+        8.693793002748862,
+        11.8072400073288,
+        10.58152801124379,
+        10.115181998116896,
+        7.908197992946953,
+        9.438626002520323,
+        10.39735299127642
+      ]
+    },
+    "masked_loss_forward_backward": {
+      "median_ms": 1.6704620065866038,
+      "samples_ms": [
+        1.6704620065866038,
+        1.6406669892603531,
+        1.6554900066694245,
+        1.685858005657792,
+        1.6406659997301176,
+        1.7030479939421639,
+        1.6898759931791574
+      ]
+    },
+    "evaluation_diagnostics": {
+      "median_ms": 106.31107199878898,
+      "samples_ms": [
+        106.31107199878898,
+        118.73384000500664,
+        97.96113499032799
+      ]
+    },
+    "optimizer_state_checks": {
+      "median_ms": 0.0033289979910477996,
+      "samples_ms": [
+        0.003765002475120127,
+        0.0034940021578222513,
+        0.0033289979910477996,
+        0.003302993718534708,
+        0.003308989107608795,
+        0.0032849929993972182,
+        0.003341992851346731
+      ]
+    },
+    "atomic_checkpoint_persistence": {
+      "median_ms": 1.5138589951675385,
+      "samples_ms": [
+        1.6466719971504062,
+        1.4698919985676184,
+        1.5138589951675385
+      ]
+    },
+    "complete_loss_with_predictions": {
+      "median_ms": 17.133910005213693,
+      "samples_ms": [
+        17.389440996339545,
+        17.243497000890784,
+        16.999113009660505,
+        17.133910005213693,
+        17.075531999580562,
+        17.052903000148945,
+        17.163113996502943
+      ]
+    }
+  },
+  "memory": {
+    "peak_rss_kib_process_cumulative": 302648,
+    "peak_cuda_bytes": null,
+    "note": "CPU-only environment; GPU peak allocation unavailable; RSS is process cumulative high-water mark, not stage-isolated."
+  },
+  "method": "Synthetic fixed-seed 64-pizza batch, 4 component occurrences per pizza, 60 trainable classes, bounded BOX H=1, latent dimension 16; medians over repeated warmed runs. No real dataset used.",
+  "invocation_elapsed_seconds": 1.6467647419922287
+}

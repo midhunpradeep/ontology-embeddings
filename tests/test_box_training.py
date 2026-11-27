@@ -1,19 +1,24 @@
 from __future__ import annotations
 
+import copy
 from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
 import torch
 
+from ontology_embeddings.box import box_clearance, box_objective, validate_endpoints
 from ontology_embeddings.box_training import (
     BoxMultiLabelModel,
+    _box_loss,
     _geometry_diagnostics,
     masked_box_task_loss,
     train_box,
 )
 from ontology_embeddings.dataset.schema import ComponentRecord, DatasetRecord
 from ontology_embeddings.features import COMPONENT_FEATURE_NAMES, PIZZA_FEATURE_NAMES
+from ontology_embeddings.shared_training import checked_optimizer_update
+from ontology_embeddings.training import _pack
 
 
 def _record(sample, split, positive):
@@ -63,6 +68,166 @@ def _dataset():
         pizza_supervision_class_ids=(0,),
         component_supervision_class_ids=(1,),
     )
+
+
+def _legacy_box_task_loss(ps, pt, pk, pa, cs, ct, ck, ca, parents):
+    def entity_mean(scores, targets, known, applicable):
+        eligible = known.bool() & applicable.bool()
+        losses = []
+        for row in range(scores.shape[0]):
+            selected = eligible[row]
+            if torch.any(selected):
+                losses.append(
+                    box_objective(
+                        scores[row, selected].unsqueeze(0),
+                        targets[row, selected].unsqueeze(0),
+                        kind="logistic",
+                        tau=0.1,
+                        margin=0.1,
+                    ).mean()
+                )
+        return torch.stack(losses).mean() if losses else None
+
+    pizza = entity_mean(ps, pt, pk, pa)
+    components = []
+    for row, parent in enumerate(parents):
+        components.append(
+            (
+                parent,
+                entity_mean(
+                    cs[row : row + 1], ct[row : row + 1], ck[row : row + 1], ca[row : row + 1]
+                ),
+            )
+        )
+    parents_mean = [
+        torch.stack(
+            [loss for owner, loss in components if owner == parent and loss is not None]
+        ).mean()
+        for parent in range(len(ps))
+        if any(owner == parent and loss is not None for owner, loss in components)
+    ]
+    component = torch.stack(parents_mean).mean() if parents_mean else None
+    available = [loss for loss in (pizza, component) if loss is not None]
+    return torch.stack(available).mean() if available else None
+
+
+def test_box_shared_loss_and_optimizer_update_match_prechange_reference():
+    torch.manual_seed(73)
+    dataset = _dataset()
+    records = [_record("train-a", "train", True), _record("train-b", "train", False)]
+    reference = BoxMultiLabelModel(
+        len(PIZZA_FEATURE_NAMES),
+        len(COMPONENT_FEATURE_NAMES),
+        dataset.canonical_class_ids,
+        dataset.class_manifest_sha256,
+        latent_dim=3,
+        domain="bounded",
+        seed=73,
+    )
+    candidate = copy.deepcopy(reference)
+    packed = _pack(records, dataset, torch.device("cpu"))
+    x_p, y_p, m_p, x_c, y_c, m_c, parents = packed
+    a_p = torch.tensor([[True, False]]).expand_as(y_p)
+    a_c = torch.tensor([[False, True]]).expand_as(y_c)
+    ref_lower, ref_upper = reference.endpoints()
+    candidate_lower, candidate_upper = candidate.endpoints()
+    ref_p = box_clearance(reference.encode(x_p, "pizza"), ref_lower, ref_upper, domain="bounded")
+    ref_c = box_clearance(
+        reference.encode(x_c, "component"), ref_lower, ref_upper, domain="bounded"
+    )
+    got_p = box_clearance(
+        candidate.encode(x_p, "pizza"), candidate_lower, candidate_upper, domain="bounded"
+    )
+    got_c = box_clearance(
+        candidate.encode(x_c, "component"), candidate_lower, candidate_upper, domain="bounded"
+    )
+    assert torch.equal(ref_p, got_p) and torch.equal(ref_c, got_c)
+    assert torch.equal(reference.predict(x_p, "pizza"), candidate.predict(x_p, "pizza"))
+    assert torch.equal(reference.predict(x_c, "component"), candidate.predict(x_c, "component"))
+
+    expected_loss = _legacy_box_task_loss(ref_p, y_p, m_p, a_p, ref_c, y_c, m_c, a_c, parents)
+    actual_loss, _ = masked_box_task_loss(
+        got_p,
+        y_p,
+        m_p,
+        a_p,
+        got_c,
+        y_c,
+        m_c,
+        a_c,
+        parents,
+        kind="logistic",
+        tau=0.1,
+        margin=0.1,
+    )
+    assert expected_loss is not None and actual_loss is not None
+    assert torch.allclose(expected_loss, actual_loss, atol=1e-7, rtol=0)
+    expected_loss.backward()
+    reference_grads = {
+        name: value.grad.detach().clone() for name, value in reference.named_parameters()
+    }
+    groups = [
+        {"params": reference.pizza_adapter.parameters(), "name": "pizza_adapter"},
+        {"params": reference.component_adapter.parameters(), "name": "component_adapter"},
+        {"params": reference.geometry.parameters(), "name": "geometry"},
+    ]
+    ref_optimizer = torch.optim.Adam(
+        groups, lr=0.02, betas=(0.9, 0.999), eps=1e-8, weight_decay=0, amsgrad=False
+    )
+    ref_optimizer.zero_grad(set_to_none=True)
+    # The legacy loss backward was computed above; restore its gradients after zeroing.
+    for name, parameter in reference.named_parameters():
+        parameter.grad = reference_grads[name].clone()
+    torch.nn.utils.clip_grad_norm_(reference.parameters(), 1.0)
+    ref_optimizer.step()
+
+    groups = [
+        {"params": candidate.pizza_adapter.parameters(), "name": "pizza_adapter"},
+        {"params": candidate.component_adapter.parameters(), "name": "component_adapter"},
+        {"params": candidate.geometry.parameters(), "name": "geometry"},
+    ]
+    candidate_optimizer = torch.optim.Adam(
+        groups, lr=0.02, betas=(0.9, 0.999), eps=1e-8, weight_decay=0, amsgrad=False
+    )
+    candidate_loss, _ = masked_box_task_loss(
+        got_p,
+        y_p,
+        m_p,
+        a_p,
+        got_c,
+        y_c,
+        m_c,
+        a_c,
+        parents,
+        kind="logistic",
+        tau=0.1,
+        margin=0.1,
+    )
+    candidate_loss.backward(retain_graph=True)
+    for name, parameter in candidate.named_parameters():
+        assert torch.allclose(parameter.grad, reference_grads[name], atol=1e-7, rtol=0), name
+    candidate.zero_grad(set_to_none=True)
+    stats = checked_optimizer_update(
+        candidate,
+        candidate_optimizer,
+        candidate_loss,
+        update_number=1,
+        gradient_groups={
+            "encoder": [
+                *candidate.pizza_adapter.parameters(),
+                *candidate.component_adapter.parameters(),
+            ],
+            "geometry": list(candidate.geometry.parameters()),
+        },
+        max_grad_norm=1.0,
+        validate_model=lambda: validate_endpoints(*candidate.endpoints(), domain="bounded"),
+        model_name="BOX",
+    )
+    assert stats["global_pre_clip_norm"] > 0
+    for name, parameter in reference.named_parameters():
+        assert torch.allclose(
+            parameter, dict(candidate.named_parameters())[name], atol=2e-6, rtol=0
+        ), name
 
 
 def test_box_masked_loss_matches_hierarchical_pr2_reduction_and_ignores_unknowns():
@@ -201,6 +366,59 @@ def test_box_forward_chunk_and_checkpoint_class_order_validation(tmp_path):
     with pytest.raises(ValueError, match="snapshot"):
         model.load_checkpoint(corrupt_snapshot)
     assert all(torch.equal(before[key], value) for key, value in model.state_dict().items())
+
+
+def test_box_loss_shares_encoding_and_decode_and_keeps_exact_membership(monkeypatch):
+    records = [_record("parity", "train", True)]
+    dataset = _dataset()
+    model = BoxMultiLabelModel(
+        len(PIZZA_FEATURE_NAMES),
+        len(COMPONENT_FEATURE_NAMES),
+        dataset.canonical_class_ids,
+        dataset.class_manifest_sha256,
+        latent_dim=3,
+        domain="bounded",
+        seed=41,
+    )
+    device = torch.device("cpu")
+    packed = _pack(records, dataset, device)
+    expected_pizza = model.predict(packed[0], "pizza")
+    expected_components = model.predict(packed[3], "component")
+    original_encode = model.encode
+    original_endpoints = model.endpoints
+    calls = {"pizza_encode": 0, "component_encode": 0, "decode": 0}
+
+    def counted_encode(features, entity):
+        calls[f"{entity}_encode"] += 1
+        return original_encode(features, entity)
+
+    def counted_endpoints():
+        calls["decode"] += 1
+        return original_endpoints()
+
+    monkeypatch.setattr(model, "encode", counted_encode)
+    monkeypatch.setattr(model, "endpoints", counted_endpoints)
+    total, _, batch = _box_loss(
+        model, records, dataset, device, kind="logistic", tau=0.1, margin=0.1
+    )
+    assert total is not None
+    assert torch.equal(batch[0], expected_pizza)
+    assert torch.equal(batch[1], expected_components)
+    assert calls == {"pizza_encode": 1, "component_encode": 1, "decode": 1}
+
+    calls.update(pizza_encode=0, component_encode=0, decode=0)
+    _, _, train_batch = _box_loss(
+        model,
+        records,
+        dataset,
+        device,
+        kind="logistic",
+        tau=0.1,
+        margin=0.1,
+        include_predictions=False,
+    )
+    assert train_batch[0] is None and train_batch[1] is None
+    assert calls == {"pizza_encode": 1, "component_encode": 1, "decode": 1}
 
 
 def test_train_box_pairs_adapters_and_physical_bounds_across_domains(tmp_path):

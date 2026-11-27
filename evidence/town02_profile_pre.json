@@ -1,0 +1,126 @@
+{
+  "phase": "pre",
+  "revision": "d647fcc50576969f53fd6fe2b1ac1597fadf57d4",
+  "python": "3.12.0",
+  "torch": "2.6.0+cpu",
+  "device": "cpu",
+  "cuda_available": false,
+  "threads": 1,
+  "batch_shape": {
+    "pizza": [
+      64,
+      23
+    ],
+    "components": [
+      256,
+      22
+    ],
+    "classes": 60,
+    "latent_dim": 16,
+    "boxes": 1,
+    "points_scored_for_train": 320
+  },
+  "stages": {
+    "pack_records": {
+      "median_ms": 9.724574003485031,
+      "samples_ms": [
+        10.426025008200668,
+        9.004346997244284,
+        10.389438000856899,
+        9.885644991300069,
+        9.724574003485031,
+        9.26016698940657,
+        9.454290993744507
+      ]
+    },
+    "encoding": {
+      "median_ms": 0.23802999930921942,
+      "samples_ms": [
+        0.2498860121704638,
+        0.24468799529131502,
+        0.2379349898546934,
+        0.2357969933655113,
+        0.2488530008122325,
+        0.23802999930921942,
+        0.2342129882890731
+      ]
+    },
+    "decode_score_backward": {
+      "median_ms": 10.317630003555678,
+      "samples_ms": [
+        9.76586900651455,
+        11.422783994930796,
+        11.165541000082158,
+        9.915443995851092,
+        10.317630003555678,
+        10.407915004179813,
+        7.639731993549503
+      ]
+    },
+    "masked_loss_forward_backward": {
+      "median_ms": 100.35287300706841,
+      "samples_ms": [
+        99.86607800237834,
+        99.53806499834172,
+        100.07346200291067,
+        100.35287300706841,
+        101.66244900028687,
+        101.29305900773033,
+        100.64334901107941
+      ]
+    },
+    "evaluation_diagnostics": {
+      "median_ms": 114.30003200075589,
+      "samples_ms": [
+        114.06723900290672,
+        114.85379900841508,
+        114.30003200075589
+      ]
+    },
+    "optimizer_state_checks": {
+      "median_ms": 0.003359993570484221,
+      "samples_ms": [
+        0.003626002580858767,
+        0.0034640106605365872,
+        0.0033810065360739827,
+        0.0032999960239976645,
+        0.003298991941846907,
+        0.0033139949664473534,
+        0.003359993570484221
+      ]
+    },
+    "atomic_checkpoint_persistence": {
+      "median_ms": 1.4336710009956732,
+      "samples_ms": [
+        1.4766200038138777,
+        1.4336710009956732,
+        1.4053609920665622
+      ]
+    },
+    "complete_loss_with_predictions": {
+      "median_ms": 83.72571799554862,
+      "samples_ms": [
+        84.01497900194954,
+        84.58106899342965,
+        82.73891200951766,
+        82.78962101030629,
+        84.12160199077334,
+        83.72571799554862,
+        82.91392200044356
+      ]
+    }
+  },
+  "memory": {
+    "peak_rss_kib_process_cumulative": 303364,
+    "peak_cuda_bytes": null,
+    "note": "CPU-only environment; GPU peak allocation unavailable; RSS is process cumulative high-water mark, not stage-isolated."
+  },
+  "method": "Synthetic fixed-seed 64-pizza batch, 4 component occurrences per pizza, 60 trainable classes, bounded BOX H=1, latent dimension 16; medians over repeated warmed runs. No real dataset used. Source hashes identify the exact base revision code measured before implementation.",
+  "source_sha256": {
+    "src/ontology_embeddings/model.py": "71313050437f4b9e7f74a168aaf05f61ae2a27981fab0bb691cc626d26092840",
+    "src/ontology_embeddings/training.py": "5c39c046c0805a8b526e75fc0300a3ba462ef61282d9ed6e2cb58a1019889647",
+    "src/ontology_embeddings/box_training.py": "78b2d9c049b128afcd607e7f5157677b0a7b8e92407b8d1aac1ca972466812dc",
+    "src/ontology_embeddings/box.py": "67c2eb6e013b0a660e10616f7f7be4410dbc78748391d07647bc481a5e688f11",
+    "src/ontology_embeddings/shared_training.py": null
+  }
+}
