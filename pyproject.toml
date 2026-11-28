@@ -23,8 +23,13 @@ dependencies = [
 oe-dataset = "ontology_embeddings.cli:main"
 oe-town = "ontology_embeddings.town_experiment:main"
 oe-rel01 = "ontology_embeddings.rel01_cli:main"
+oe-geo = "ontology_embeddings.geo_explorer:main"
 
 [project.optional-dependencies]
+geo-ui = [
+  "dash>=2.17,<4",
+  "plotly>=5,<7",
+]
 dev = [
   "pytest>=8,<9",
   "ruff>=0.6,<1",
