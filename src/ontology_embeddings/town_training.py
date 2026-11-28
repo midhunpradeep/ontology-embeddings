@@ -1004,7 +1004,7 @@ def train_town(
                 save("best", epoch + 1, best_loss)
             rec.update(last_epoch=epoch + 1, latest_metrics=row)
         final_geometry = _town_geometry_diagnostics(model, train_records, dataset, dev)
-        save("final", epochs, None if not validation_records else best_loss)
+        save("final", epochs, None if not validation_records else float(val_loss))
         if validation_records and (checkpoints / "best.pt").is_file():
             model.load_checkpoint(
                 checkpoints / "best.pt", objective=objective, tau=tau, margin=margin,

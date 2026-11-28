@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
+import ontology_embeddings.town_training as town_training
 from ontology_embeddings.box import box_clearance, box_membership
 from ontology_embeddings.box_training import BoxMultiLabelModel, train_box
 from ontology_embeddings.dataset.schema import ComponentRecord, DatasetRecord
@@ -193,6 +194,54 @@ def test_trainer_produced_checkpoint_reloads_and_reports_frame_window_updates(tm
         consumer.predict(torch.randn((0, len(PIZZA_FEATURE_NAMES))), "pizza"),
         torch.empty((0, 2), dtype=torch.bool),
     )
+
+
+def test_final_checkpoint_stores_final_validation_loss_not_best_loss(tmp_path, monkeypatch):
+    dataset = _dataset()
+    train = (_record("train-0", "train", True), _record("train-1", "train", False))
+    validation = (
+        _record("valid-0", "validation", True),
+        _record("valid-1", "validation", False),
+    )
+    native_losses = (0.2, 0.8)
+    validation_epoch = 0
+    original_town_loss = town_training._town_loss
+
+    def loss_with_scripted_validation(*args, **kwargs):
+        nonlocal validation_epoch
+        loss, tasks, batch = original_town_loss(*args, **kwargs)
+        records = args[1]
+        if (
+            records and records[0].split == "validation"
+            and not kwargs.get("update_only", False)
+            and validation_epoch < len(native_losses)
+        ):
+            loss = native_losses[validation_epoch]
+            validation_epoch += 1
+        return loss, tasks, batch
+
+    monkeypatch.setattr(town_training, "_town_loss", loss_with_scripted_validation)
+    result = train_town(
+        dataset, train, validation, artifact_root=tmp_path / "runs", seed=2, epochs=2,
+        batch_size=2, latent_dim=3, houses=1, windows=0, domain="unbounded",
+        learning_rate=0.01,
+    )
+    final = torch.load(result["checkpoint_paths"]["final"], weights_only=True)
+    best = torch.load(result["checkpoint_paths"]["best"], weights_only=True)
+    assert result["history"][-1]["validation_loss"] == 0.8
+    assert final["epoch"] == 2
+    assert final["validation_loss"] == result["history"][-1]["validation_loss"]
+    assert best["epoch"] == 1
+    assert best["validation_loss"] == 0.2
+
+    no_validation = train_town(
+        dataset, train, artifact_root=tmp_path / "no-validation-runs", seed=3, epochs=1,
+        batch_size=2, latent_dim=3, houses=1, windows=0, domain="unbounded",
+    )
+    absent_validation_final = torch.load(
+        no_validation["checkpoint_paths"]["final"], weights_only=True
+    )
+    assert absent_validation_final["validation_loss"] is None
 
 
 def test_trainer_rejects_invalid_optimizer_update_without_persisting_invalid_state(
