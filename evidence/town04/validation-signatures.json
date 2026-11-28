@@ -1,0 +1,100 @@
+{
+  "bundle_sha256": "961dc4d19ff26f333821f293c2df3ca0bff8a929b518081c42ab37dbb28d27f7",
+  "dataset_id": "pizza-6a33710d13eb90fdde3e",
+  "domains": {
+    "bounded": {
+      "best_checkpoint_reload_predictions_equivalent": true,
+      "best_checkpoint_sha256": "13793839d8f4361cc4d11cb4ca0f470b8f5b9037d86ed4de341d5fd1f8417849",
+      "run_id": "20261127T142545-2e2b89819b9f",
+      "selected_epoch": 45,
+      "selected_task_metrics": {
+        "component": {
+          "train_frequency_baseline_micro_f1": 0.7319846848391337,
+          "validation_micro_f1": 0.9240048906398587
+        },
+        "pizza": {
+          "train_frequency_baseline_micro_f1": 0.6475535168195719,
+          "validation_micro_f1": 0.9873111782477342
+        }
+      },
+      "validation_feature_signatures": {
+        "component": {
+          "overlap_distinct_signatures": 22,
+          "train_distinct_signatures": 22,
+          "train_entity_count": 12338,
+          "validation_distinct_signatures": 22,
+          "validation_entity_count": 4028,
+          "validation_seen_count": 4028,
+          "validation_seen_macro_defined_classes": 30,
+          "validation_seen_micro_f1": 0.9240048906398587,
+          "validation_unseen_count": 0,
+          "validation_unseen_macro_defined_classes": 0,
+          "validation_unseen_micro_f1": null
+        },
+        "pizza": {
+          "overlap_distinct_signatures": 84,
+          "train_distinct_signatures": 414,
+          "train_entity_count": 720,
+          "validation_distinct_signatures": 174,
+          "validation_entity_count": 240,
+          "validation_seen_count": 143,
+          "validation_seen_macro_defined_classes": 31,
+          "validation_seen_micro_f1": 1.0,
+          "validation_unseen_count": 97,
+          "validation_unseen_macro_defined_classes": 27,
+          "validation_unseen_micro_f1": 0.9683257918552036
+        }
+      }
+    },
+    "unbounded": {
+      "best_checkpoint_reload_predictions_equivalent": true,
+      "best_checkpoint_sha256": "686b82237752dd993433f2a31d09e4622f3bdc12a439f1d046638f147fc7c8cf",
+      "run_id": "20261127T142303-452045129f33",
+      "selected_epoch": 49,
+      "selected_task_metrics": {
+        "component": {
+          "train_frequency_baseline_micro_f1": 0.7319846848391337,
+          "validation_micro_f1": 1.0
+        },
+        "pizza": {
+          "train_frequency_baseline_micro_f1": 0.6475535168195719,
+          "validation_micro_f1": 0.9867149758454107
+        }
+      },
+      "validation_feature_signatures": {
+        "component": {
+          "overlap_distinct_signatures": 22,
+          "train_distinct_signatures": 22,
+          "train_entity_count": 12338,
+          "validation_distinct_signatures": 22,
+          "validation_entity_count": 4028,
+          "validation_seen_count": 4028,
+          "validation_seen_macro_defined_classes": 30,
+          "validation_seen_micro_f1": 1.0,
+          "validation_unseen_count": 0,
+          "validation_unseen_macro_defined_classes": 0,
+          "validation_unseen_micro_f1": null
+        },
+        "pizza": {
+          "overlap_distinct_signatures": 84,
+          "train_distinct_signatures": 414,
+          "train_entity_count": 720,
+          "validation_distinct_signatures": 174,
+          "validation_entity_count": 240,
+          "validation_seen_count": 143,
+          "validation_seen_macro_defined_classes": 31,
+          "validation_seen_micro_f1": 1.0,
+          "validation_unseen_count": 97,
+          "validation_unseen_macro_defined_classes": 27,
+          "validation_unseen_micro_f1": 0.9668674698795181
+        }
+      }
+    }
+  },
+  "schema": "town04-selected-validation-signature-diagnostics-v1",
+  "sealed_test_accessed": false,
+  "source_sha": "3714b8f1e7e1aa94ab252734c6a73b251973077f",
+  "train_and_validation_only": true,
+  "train_count": 720,
+  "validation_count": 240
+}
