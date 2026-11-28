@@ -849,7 +849,10 @@ def test_invalid_optimizer_update_fails_closed_and_preserves_latest(tmp_path, mo
     assert all(torch.isfinite(value).all() for value in payload["model_state"].values())
 
 
-def test_temporal_capture_preserves_box_updates_and_optimizer_trajectory(tmp_path, monkeypatch):
+@pytest.mark.parametrize("device", ["cpu", "cuda:0"] if torch.cuda.is_available() else ["cpu"])
+def test_temporal_capture_preserves_box_updates_and_optimizer_trajectory(
+    tmp_path, monkeypatch, device
+):
     import ontology_embeddings.box_training as box_training
     from ontology_embeddings.geo_capture import state_dict_sha256, verify_temporal_capture
 
@@ -877,6 +880,7 @@ def test_temporal_capture_preserves_box_updates_and_optimizer_trajectory(tmp_pat
         batch_size=2,
         latent_dim=2,
         domain="unbounded",
+        device=device,
     )
     without_states = captured_optimizer_states[:]
     captured_optimizer_states.clear()
@@ -891,7 +895,9 @@ def test_temporal_capture_preserves_box_updates_and_optimizer_trajectory(tmp_pat
         batch_size=2,
         latent_dim=2,
         domain="unbounded",
+        device=device,
         capture_temporal=True,
+        portable_artifact_paths=True,
     )
     with_states = captured_optimizer_states[:]
 
@@ -919,13 +925,32 @@ def test_temporal_capture_preserves_box_updates_and_optimizer_trajectory(tmp_pat
         nested_equal(left, right) for left, right in zip(without_states, with_states, strict=True)
     )
     without_latest = torch.load(without_capture["checkpoint_paths"]["latest"], weights_only=True)
-    with_latest = torch.load(with_capture["checkpoint_paths"]["latest"], weights_only=True)
+    run_path = tmp_path / "with-capture" / with_capture["run_id"]
+    with_latest = torch.load(
+        run_path / with_capture["checkpoint_paths"]["latest"], weights_only=True
+    )
     assert all(
         torch.equal(without_latest["model_state"][key], with_latest["model_state"][key])
         for key in without_latest["model_state"]
     )
 
-    run_path = Path(with_capture["run_path"])
+    assert with_capture["run_path"] == "."
+    assert all(not Path(path).is_absolute() for path in with_capture["checkpoint_paths"].values())
+    persisted_manifest = json.loads((run_path / "manifest.json").read_text())
+    assert persisted_manifest["summary"]["run_path"] == "."
+    assert all(
+        not Path(path).is_absolute()
+        for path in persisted_manifest["summary"]["checkpoint_paths"].values()
+    )
+    path_sensitive_metadata = json.dumps(
+        {
+            "invocation": persisted_manifest["invocation"],
+            "dataset": persisted_manifest["dataset"],
+            "summary": persisted_manifest["summary"],
+        },
+        sort_keys=True,
+    )
+    assert str(tmp_path) not in path_sensitive_metadata
     verification = verify_temporal_capture(
         run_path, expected_run_id=with_capture["run_id"], expected_epochs=2, batches_per_epoch=2
     )

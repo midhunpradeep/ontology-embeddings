@@ -23,6 +23,8 @@ dependencies = [
 oe-dataset = "ontology_embeddings.cli:main"
 oe-town = "ontology_embeddings.town_experiment:main"
 oe-rel01 = "ontology_embeddings.rel01_cli:main"
+oe-geo01 = "ontology_embeddings.geo01:main"
+oe-geo01-verify = "ontology_embeddings.geo_reconstruction:main"
 
 [project.optional-dependencies]
 dev = [

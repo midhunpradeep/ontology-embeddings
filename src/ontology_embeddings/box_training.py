@@ -636,7 +636,9 @@ def train_box(
     initial_box_bounds: tuple[torch.Tensor, torch.Tensor] | None = None,
     initial_box_class_ids: Sequence[int] | None = None,
     paired_initialization_provenance: dict[str, Any] | None = None,
+    dataset_provenance: dict[str, Any] | None = None,
     capture_temporal: bool = False,
+    portable_artifact_paths: bool = False,
 ):
     """Train BOX metadata model, persisting only validated states and recording all outcomes."""
     config = {
@@ -676,27 +678,42 @@ def train_box(
         issue="13",
     )
     try:
+        if dataset_provenance is not None and not isinstance(dataset_provenance, dict):
+            raise ValueError("dataset provenance must be a mapping")
+        dataset_identity = {
+            "dataset_id": dataset.dataset_id,
+            "dataset_manifest_sha256": dataset.dataset_manifest_sha256,
+            "class_manifest_sha256": dataset.class_manifest_sha256,
+            "class_ids": list(dataset.canonical_class_ids),
+            "class_names": list(dataset.class_names),
+            "class_iris": list(dataset.class_iris),
+            "fixed_positive_class_ids": list(getattr(dataset, "fixed_positive_class_ids", ())),
+            "unsupported_class_ids": list(getattr(dataset, "unsupported_class_ids", ())),
+            "train_sample_ids": [x.sample_id for x in train_records],
+            "validation_sample_ids": [x.sample_id for x in validation_records],
+        }
+        if hasattr(dataset, "manifest_id"):
+            dataset_identity["manifest_id"] = dataset.manifest_id
+        if dataset_provenance is not None:
+            for key, value in dataset_provenance.items():
+                if key in dataset_identity and dataset_identity[key] != value:
+                    raise ValueError(
+                        f"dataset provenance conflicts with verified identity for {key}"
+                    )
+            dataset_identity.update(dataset_provenance)
+        environment = {
+            "torch": torch.__version__,
+            "device": str(device),
+            "cuda": torch.version.cuda,
+            "python": __import__("sys").version,
+        }
+        if torch.device(device).type == "cuda" and torch.cuda.is_available():
+            environment["device_name"] = torch.cuda.get_device_name(torch.device(device))
         rec.update(
             config=config,
             feature_schema=FEATURE_SCHEMA,
-            environment={
-                "torch": torch.__version__,
-                "device": str(device),
-                "cuda": torch.version.cuda,
-                "python": __import__("sys").version,
-            },
-            dataset={
-                "dataset_id": dataset.dataset_id,
-                "dataset_manifest_sha256": dataset.dataset_manifest_sha256,
-                "class_manifest_sha256": dataset.class_manifest_sha256,
-                "class_ids": list(dataset.canonical_class_ids),
-                "class_names": list(dataset.class_names),
-                "class_iris": list(dataset.class_iris),
-                "fixed_positive_class_ids": list(getattr(dataset, "fixed_positive_class_ids", ())),
-                "unsupported_class_ids": list(getattr(dataset, "unsupported_class_ids", ())),
-                "train_sample_ids": [x.sample_id for x in train_records],
-                "validation_sample_ids": [x.sample_id for x in validation_records],
-            },
+            environment=environment,
+            dataset=dataset_identity,
         )
         if (
             not train_records
@@ -737,6 +754,8 @@ def train_box(
         ).to(dev)
         if not isinstance(capture_temporal, bool):
             raise ValueError("capture_temporal must be a boolean")
+        if not isinstance(portable_artifact_paths, bool):
+            raise ValueError("portable_artifact_paths must be a boolean")
         if paired_initialization_provenance is not None and not isinstance(
             paired_initialization_provenance, dict
         ):
@@ -1101,9 +1120,10 @@ def train_box(
         }
         result = {
             "run_id": rec.run_id,
-            "run_path": str(rec.path),
+            "run_path": "." if portable_artifact_paths else str(rec.path),
             "status": "completed",
             "history": history,
+            "accepted_updates": accepted_updates,
             "parameter_updates": updated,
             "best_checkpoint_reload_predictions_equivalent": equal,
             "best_checkpoint_selection": "minimum combined native validation loss; earliest tie",
@@ -1115,7 +1135,9 @@ def train_box(
                 "final": final_geometry_snapshot,
             },
             "checkpoint_paths": {
-                x: str(checkpoints / f"{x}.pt")
+                x: f"checkpoints/{x}.pt"
+                if portable_artifact_paths
+                else str(checkpoints / f"{x}.pt")
                 for x in ("initial", "latest", "best")
                 if (checkpoints / f"{x}.pt").exists()
             },
