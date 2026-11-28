@@ -107,8 +107,9 @@ def validate_ordered_selections(train_ids: list[str], validation_ids: list[str])
 
 
 class AttemptLedger:
-    """Append-only JSONL history; each attempt is distinct from its config and RunRecord ID."""
+    """Append-only status history; each attempt is distinct from config and RunRecord IDs."""
     STATUSES = {"pending", "blocked", "failed", "interrupted", "completed"}
+    FAILURE_CLASSES = {"external_operational", "numerical_failure", "implementation_correctness"}
 
     def __init__(self, path: str | Path):
         self.path = Path(path)
@@ -124,34 +125,62 @@ class AttemptLedger:
             result.append(record)
         return result
 
-    def append(self, *, config_id: str, run_id: str, status: str,
-               evidence_references: list[str], outcome_class: str | None = None,
+    def append(self, *, config_id: str, status: str, evidence_references: list[str],
+               run_id: str | None = None, attempt_id: str | None = None,
+               outcome_class: str | None = None,
                recovery_evidence: list[str] | None = None) -> None:
         config = next((c for c in CONFIGURATIONS if c["config_id"] == config_id), None)
-        if config is None:
-            raise ValueError("unknown configuration ID")
-        if not isinstance(run_id, str) or not run_id.strip() or status not in self.STATUSES:
-            raise ValueError("invalid RunRecord ID or status")
-        if status == "pending":
-            raise ValueError("pending is a manifest state, not an attempt outcome")
+        if config is None or status not in self.STATUSES:
+            raise ValueError("unknown configuration ID or status")
         if not evidence_references or any(not isinstance(x, str) or not x for x in evidence_references):
-            raise ValueError("attempt requires evidence references")
+            raise ValueError("status event requires evidence references")
+        if run_id is not None and (not isinstance(run_id, str) or not run_id.strip()):
+            raise ValueError("RunRecord ID must be nonempty or null")
+        if status in {"pending", "blocked"} and run_id is not None:
+            raise ValueError("pre-run pending/blocked states cannot have a RunRecord ID")
+        if status in {"failed", "interrupted", "completed"} and run_id is None:
+            raise ValueError("terminal run outcome requires a RunRecord ID")
+        if status == "pending" and outcome_class is not None:
+            raise ValueError("pending state cannot have an outcome class")
+        if status == "blocked" and outcome_class != "dependency_blocked":
+            raise ValueError("pre-run blocked state requires dependency_blocked classification")
+        if status in {"failed", "interrupted"} and outcome_class not in self.FAILURE_CLASSES:
+            raise ValueError("run failure requires a recognized outcome class")
+        if status == "completed" and outcome_class not in {None, "scientific_negative"}:
+            raise ValueError("completed run may only record a valid scientific outcome")
         prior = self.records()
-        if any(r.get("run_id") == run_id for r in prior):
+        if run_id is not None and any(r.get("run_id") == run_id for r in prior):
             raise ValueError("RunRecord ID already recorded; history is append-only")
-        attempts = [r for r in prior if r.get("config_id") == config_id]
-        if attempts:
-            last = attempts[-1]
-            allowed_recovery = (last["status"] == "failed" and
-                last.get("outcome_class") == "external_operational" and
-                recovery_evidence)
-            if not allowed_recovery or len(attempts) >= 2:
-                raise ValueError("retry not authorized; retain outcome without another attempt")
-            if last["config_sha256"] != _config_hash(config):
-                raise ValueError("configuration changed between attempts")
+        events = [r for r in prior if r.get("config_id") == config_id]
+        last = events[-1] if events else None
+        if last is not None and last["config_sha256"] != _config_hash(config):
+            raise ValueError("scientific configuration changed after ledger entry")
+        if last is None:
+            if status not in {"pending", "blocked"}:
+                raise ValueError("configuration must first be recorded pending or dependency-blocked")
+            attempt = 1
+        elif status == "pending":
+            if last["status"] == "blocked":
+                attempt = last["attempt"]
+            elif last["status"] == "failed" and last.get("outcome_class") == "external_operational":
+                attempt = last["attempt"] + 1
+                if attempt > 2 or not recovery_evidence:
+                    raise ValueError("retry requires correction evidence and is limited to one fresh attempt")
+            else:
+                raise ValueError("invalid transition to pending; previous outcome is not retryable")
+        else:
+            attempt = last["attempt"]
+            valid = ((last["status"] == "pending" and status in {"blocked", "failed", "interrupted", "completed"}) or
+                     (last["status"] == "blocked" and status == "blocked"))
+            if not valid:
+                raise ValueError("invalid status transition; append-only history cannot be overwritten")
+        expected_attempt_id = f"{config_id}-A{attempt:02d}"
+        if attempt_id is not None and attempt_id != expected_attempt_id:
+            raise ValueError("attempt ID does not match configuration and attempt sequence")
         record = {"config_id": config_id, "config_sha256": _config_hash(config),
-                  "run_id": run_id, "attempt": len(attempts) + 1, "status": status,
-                  "outcome_class": outcome_class, "evidence_references": evidence_references,
+                  "attempt_id": expected_attempt_id, "attempt": attempt, "status": status,
+                  "run_id": run_id, "outcome_class": outcome_class,
+                  "evidence_references": evidence_references,
                   "recovery_evidence": recovery_evidence or []}
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as stream:
