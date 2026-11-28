@@ -1,10 +1,13 @@
 import copy
+import hashlib
 import json
 
 import pytest
 
+import ontology_embeddings.geo_campaign as campaign
 from ontology_embeddings.geo_campaign import (
     AttemptLedger, CONFIGURATIONS, MANIFEST, validate_manifest,
+    validate_ordered_selections,
 )
 
 
@@ -22,13 +25,37 @@ def test_frozen_matrix_count_order_settings_and_pairing():
         assert s["seed"] == 23 and s["epochs"] == 60 and s["batch_size_pizzas"] == 64
         assert s["dtype"] == "float32" and s["tau"] == 0.1
         assert s["learning_rate_all_groups"] == 0.02 and s["global_gradient_clip"] == 1.0
-        assert config["dataset"]["test_access"] == "sealed; not decoded"
+        data = config["dataset"]
+        assert data["test_access"] == "sealed; not decoded"
+        assert data["train_count"] == 720 and data["validation_count"] == 240
+        assert data["train_selection_sha256"] == "d9f7ef8f7ea3d20def144c052c8b9d3ff88c538036798a780e36f55bee30e219"
+        assert data["validation_selection_sha256"] == "a9fe9f1b18c635f8ab1067a65d926541b64da7734c59fefc66a00aa780fe9c0c"
+        assert config["execution_qualification"]["status"] == "blocked_pending_family_stage_qualification"
+        assert config["execution_qualification"]["source_revision"]["commit_sha"] is None
+        assert config["execution_qualification"]["environment"]["qualification"] == "unresolved"
+        assert "carrier pair" in config["initialization"]["pairing"]
+        assert (config["initialization"]["town_window_protocol"] is not None) == (config["family"] == "TOWN")
     for family in ("BOX", "TOWN"):
         for dim in (2, 8, 16):
             pair = [c for c in CONFIGURATIONS if c["family"] == family and c["dimension"] == dim]
             assert len({c["preparation_id"] for c in pair}) == 1
             assert len({c["pair_id"] for c in pair}) == 1
     validate_manifest(MANIFEST)
+
+
+def test_selection_validation_checks_count_identity_and_disjointness(monkeypatch):
+    train = [f"train-{i}" for i in range(720)]
+    validation = [f"validation-{i}" for i in range(240)]
+    encode = lambda values: hashlib.sha256(json.dumps(values, separators=(",", ":")).encode()).hexdigest()
+    monkeypatch.setattr(campaign, "TRAIN_SELECTION_SHA256", encode(train))
+    monkeypatch.setattr(campaign, "VALIDATION_SELECTION_SHA256", encode(validation))
+    validate_ordered_selections(train, validation)
+    with pytest.raises(ValueError, match="overlap"):
+        validate_ordered_selections(train, [train[0], *validation[1:]])
+    with pytest.raises(ValueError, match="counts"):
+        validate_ordered_selections(train[:-1], validation)
+    with pytest.raises(ValueError, match="identity"):
+        validate_ordered_selections([*train[:-1], "changed"], validation)
 
 
 def test_manifest_mutation_rejected():
