@@ -71,13 +71,25 @@ class TownExperimentConfig:
             raise ValueError("objective must be logistic or hinge")
         for name in ("epsilon", "delta", "tau", "learning_rate"):
             value = getattr(self, name)
-            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or value <= 0
+            ):
                 raise ValueError(f"{name} must be finite and positive")
-        if isinstance(self.margin, bool) or not isinstance(self.margin, (int, float)) or not math.isfinite(self.margin) or self.margin < 0:
+        if (
+            isinstance(self.margin, bool)
+            or not isinstance(self.margin, (int, float))
+            or not math.isfinite(self.margin)
+            or self.margin < 0
+        ):
             raise ValueError("margin must be finite and nonnegative")
         if self.domain == "bounded" and self.epsilon + (2 * self.delta if self.windows else 0) >= 2:
             raise ValueError("bounded TOWN frame width floor is not representable")
-        if not isinstance(self.device, str) or (self.device != "cpu" and not self.device.startswith("cuda")):
+        if not isinstance(self.device, str) or (
+            self.device != "cpu" and not self.device.startswith("cuda")
+        ):
             raise ValueError("device must be 'cpu' or a CUDA device")
         if self.point_chunk_size is not None and (
             isinstance(self.point_chunk_size, bool)

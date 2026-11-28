@@ -107,13 +107,19 @@ class TownMultiLabelModel(nn.Module):
             raise ValueError("vocabulary identity is required")
         if domain not in ("bounded", "unbounded"):
             raise ValueError("domain must be bounded or unbounded")
-        for name, value in (("pizza_features", pizza_features), ("component_features", component_features),
-                            ("latent_dim", latent_dim), ("houses", houses)):
+        for name, value in (
+            ("pizza_features", pizza_features), ("component_features", component_features),
+            ("latent_dim", latent_dim), ("houses", houses),
+        ):
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
                 raise ValueError(f"{name} must be a positive integer")
         if isinstance(windows, bool) or not isinstance(windows, int) or windows < 0:
             raise ValueError("windows must be a nonnegative integer")
-        if isinstance(window_retry_limit, bool) or not isinstance(window_retry_limit, int) or window_retry_limit < 1:
+        if (
+            isinstance(window_retry_limit, bool)
+            or not isinstance(window_retry_limit, int)
+            or window_retry_limit < 1
+        ):
             raise ValueError("window_retry_limit must be a positive integer")
         if (isinstance(epsilon, bool) or isinstance(delta, bool)
                 or not math.isfinite(epsilon) or epsilon <= 0
@@ -146,7 +152,10 @@ class TownMultiLabelModel(nn.Module):
             )
             frame_initialization = {"policy": "dimension-aware-box-v1", "seed": seed}
         else:
-            if not isinstance(initial_frame_bounds, (tuple, list)) or len(initial_frame_bounds) != 2:
+            if (
+                not isinstance(initial_frame_bounds, (tuple, list))
+                or len(initial_frame_bounds) != 2
+            ):
                 raise ValueError("initial_frame_bounds must contain (lower, upper)")
             requested_lower, requested_upper = initial_frame_bounds
             requested_lower, requested_upper = requested_lower.to(dev), requested_upper.to(dev)
@@ -155,7 +164,9 @@ class TownMultiLabelModel(nn.Module):
             )
             expected_shape = (len(ids), houses, latent_dim)
             if requested_lower.shape != expected_shape:
-                raise ValueError("initial frame bounds shape does not match class/house/latent order")
+                raise ValueError(
+                    "initial frame bounds shape does not match " "class/house/latent order"
+                )
             frame_a, frame_b = encode_endpoints(
                 requested_lower, requested_upper, domain=domain, epsilon=epsilon, reserve=reserve
             )
@@ -185,13 +196,19 @@ class TownMultiLabelModel(nn.Module):
                 seed=seed + 1, epsilon=epsilon, delta=delta,
                 retry_limit=window_retry_limit,
             )
-            window_a, window_b = initialized_windows.raw_a.to(dev), initialized_windows.raw_b.to(dev)
+            window_a, window_b = (
+                initialized_windows.raw_a.to(dev), initialized_windows.raw_b.to(dev)
+            )
             window_initialization = {
                 "policy": "volume-first-contained-independent-windows-v1",
                 "seed": seed + 1,
                 "retry_limit": window_retry_limit,
-                "sampled_volume_fractions": initialized_windows.sampled_fractions.detach().cpu().tolist(),
-                "actual_decoded_frame_exclusion_fractions": initialized_windows.actual_fractions.detach().cpu().tolist(),
+                "sampled_volume_fractions": (
+                    initialized_windows.sampled_fractions.detach().cpu().tolist()
+                ),
+                "actual_decoded_frame_exclusion_fractions": (
+                    initialized_windows.actual_fractions.detach().cpu().tolist()
+                ),
                 "target_lower": initialized_windows.target_lower.detach().cpu().tolist(),
                 "target_upper": initialized_windows.target_upper.detach().cpu().tolist(),
                 "actual_lower": initialized_windows.lower.detach().cpu().tolist(),
@@ -211,12 +228,21 @@ class TownMultiLabelModel(nn.Module):
         }
         adapter_hashes = {}
         if initial_adapter_state is not None:
-            if not isinstance(initial_adapter_state, dict) or set(initial_adapter_state) != set(expected_adapters):
-                raise ValueError("initial adapter state must have exact pizza/component weight and bias keys")
+            if (
+                not isinstance(initial_adapter_state, dict)
+                or set(initial_adapter_state) != set(expected_adapters)
+            ):
+                raise ValueError(
+                    "initial adapter state must have exact " "pizza/component weight and bias keys"
+                )
             validated = {}
             for key, current in expected_adapters.items():
                 candidate = initial_adapter_state[key]
-                if not isinstance(candidate, torch.Tensor) or candidate.shape != current.shape or candidate.dtype != current.dtype:
+                if (
+                    not isinstance(candidate, torch.Tensor)
+                    or candidate.shape != current.shape
+                    or candidate.dtype != current.dtype
+                ):
                     raise ValueError(f"invalid initial adapter tensor {key}")
                 if not torch.isfinite(candidate).all():
                     raise ValueError(f"non-finite initial adapter tensor {key}")
@@ -265,7 +291,9 @@ class TownMultiLabelModel(nn.Module):
             raise ValueError("bounded encoder produced points outside [-1,1]")
         return points
 
-    def clearances(self, features: torch.Tensor, entity: str, *, point_chunk_size: int | None = None):
+    def clearances(
+        self, features: torch.Tensor, entity: str, *, point_chunk_size: int | None = None
+    ):
         points = self.encode(features, entity)
         if point_chunk_size is not None and (
             isinstance(point_chunk_size, bool)
@@ -290,7 +318,11 @@ class TownMultiLabelModel(nn.Module):
         points = self.encode(features, entity)
         if point_chunk_size is None:
             size = max(1, len(points))
-        elif isinstance(point_chunk_size, bool) or not isinstance(point_chunk_size, int) or point_chunk_size < 1:
+        elif (
+            isinstance(point_chunk_size, bool)
+            or not isinstance(point_chunk_size, int)
+            or point_chunk_size < 1
+        ):
             raise ValueError("point_chunk_size must be a positive integer")
         else:
             size = point_chunk_size
@@ -303,11 +335,18 @@ class TownMultiLabelModel(nn.Module):
                 )
                 for start in range(0, len(points), size)
             ], dim=0)
-            if len(points) else torch.empty((0, len(self.class_ids)), dtype=torch.bool, device=points.device)
+            if len(points)
+            else torch.empty(
+                (0, len(self.class_ids)), dtype=torch.bool, device=points.device
+            )
         )
 
     def domain_thing_membership(self, points: torch.Tensor) -> torch.Tensor:
-        if not isinstance(points, torch.Tensor) or points.ndim != 2 or points.shape[1] != self.latent_dim:
+        if (
+            not isinstance(points, torch.Tensor)
+            or points.ndim != 2
+            or points.shape[1] != self.latent_dim
+        ):
             raise ValueError("points must have shape [N, latent_dim]")
         if points.dtype != torch.float32 or not torch.isfinite(points).all():
             raise ValueError("points must be finite float32")
@@ -319,7 +358,10 @@ class TownMultiLabelModel(nn.Module):
         groups = [
             {"params": list(self.pizza_adapter.parameters()), "name": "pizza_adapter"},
             {"params": list(self.component_adapter.parameters()), "name": "component_adapter"},
-            {"params": [self.geometry.raw_frame_a, self.geometry.raw_frame_b], "name": "frame_geometry"},
+            {
+                "params": [self.geometry.raw_frame_a, self.geometry.raw_frame_b],
+                "name": "frame_geometry",
+            },
         ]
         if self.window_count:
             groups.append({
@@ -364,7 +406,9 @@ class TownMultiLabelModel(nn.Module):
             (geometry[0], geometry[1], 2 * self.delta if self.window_count else 0.0),
             (geometry[2], geometry[3], 0.0),
         ):
-            validate_town_endpoints(lo, hi, domain=self.domain, epsilon=self.epsilon, reserve=reserve)
+            validate_town_endpoints(
+                lo, hi, domain=self.domain, epsilon=self.epsilon, reserve=reserve
+            )
         state = {key: value.detach().cpu().clone() for key, value in self.state_dict().items()}
         _atomic_torch_save({
             "metadata": {
@@ -417,15 +461,23 @@ class TownMultiLabelModel(nn.Module):
             raise ValueError("TOWN checkpoint state keys mismatch")
         for key, current in current_state.items():
             candidate = state[key]
-            if not isinstance(candidate, torch.Tensor) or candidate.shape != current.shape or candidate.dtype != current.dtype:
+            if (
+                not isinstance(candidate, torch.Tensor)
+                or candidate.shape != current.shape
+                or candidate.dtype != current.dtype
+            ):
                 raise ValueError(f"invalid TOWN checkpoint tensor {key}")
             if not torch.isfinite(candidate).all():
                 raise ValueError(f"non-finite TOWN checkpoint tensor {key}")
         try:
             decoded = self._decode_state(state)
-            validate_town_endpoints(decoded[0], decoded[1], domain=self.domain,
-                                    epsilon=self.epsilon, reserve=2 * self.delta if self.window_count else 0)
-            validate_town_endpoints(decoded[2], decoded[3], domain=self.domain, epsilon=self.epsilon)
+            validate_town_endpoints(
+                decoded[0], decoded[1], domain=self.domain, epsilon=self.epsilon,
+                reserve=2 * self.delta if self.window_count else 0,
+            )
+            validate_town_endpoints(
+                decoded[2], decoded[3], domain=self.domain, epsilon=self.epsilon
+            )
         except (ValueError, TypeError, RuntimeError) as error:
             raise ValueError(f"invalid TOWN checkpoint geometry: {error}") from error
         snapshot = payload.get("geometry")
@@ -434,7 +486,11 @@ class TownMultiLabelModel(nn.Module):
             raise ValueError("TOWN checkpoint geometry snapshot is missing")
         for key, expected in zip(keys, decoded, strict=True):
             value = snapshot[key]
-            if not isinstance(value, torch.Tensor) or value.shape != expected.shape or value.dtype != torch.float32:
+            if (
+                not isinstance(value, torch.Tensor)
+                or value.shape != expected.shape
+                or value.dtype != torch.float32
+            ):
                 raise ValueError(f"invalid TOWN checkpoint geometry snapshot {key}")
             if not torch.equal(value.cpu(), expected.detach().cpu()):
                 raise ValueError("TOWN checkpoint geometry snapshot disagrees with raw model state")
@@ -489,7 +545,9 @@ def load_box_initialization(
             margin=objective["margin"], training_config=training_config, map_location="cpu",
         )
     except (ValueError, TypeError, RuntimeError) as error:
-        raise ValueError(f"invalid historical BOX initialization producer artifact: {error}") from error
+        raise ValueError(
+            f"invalid historical BOX initialization " f"producer artifact: {error}"
+        ) from error
     lower, upper = model.endpoints()
     validate_town_endpoints(
         lower, upper, domain=domain, epsilon=epsilon, reserve=0.0,
@@ -533,8 +591,11 @@ def _town_loss(
                        dtype=torch.bool, device=device).expand_as(y_p)
     a_c = torch.tensor([value in component_supervision for value in dataset.canonical_class_ids],
                        dtype=torch.bool, device=device).expand_as(y_c)
-    if point_chunk_size is not None and (isinstance(point_chunk_size, bool) or
-                                         not isinstance(point_chunk_size, int) or point_chunk_size < 1):
+    if point_chunk_size is not None and (
+        isinstance(point_chunk_size, bool)
+        or not isinstance(point_chunk_size, int)
+        or point_chunk_size < 1
+    ):
         raise ValueError("point_chunk_size must be a positive integer")
     points_p = model.encode(x_p, "pizza")
     points_c = model.encode(x_c, "component")
@@ -613,7 +674,10 @@ def _town_geometry_diagnostics(model, records, dataset, device):
     ) if model.window_count else points.new_empty((*lower.shape[:2], 0))
     frame_point_count = in_frame.sum(dim=0)
     window_observed_count = (window_interior & in_frame.unsqueeze(-1)).sum(dim=0)
-    observed_fraction = window_observed_count.to(torch.float32) / frame_point_count.unsqueeze(-1).clamp_min(1)
+    observed_fraction = (
+        window_observed_count.to(torch.float32)
+        / frame_point_count.unsqueeze(-1).clamp_min(1)
+    )
     faces = torch.stack((points[:, None, None, :] - lower[None],
                          upper[None] - points[:, None, None, :]), dim=-1)
     frame_score = faces.amin(dim=(-1, -2))
@@ -639,19 +703,26 @@ def _town_geometry_diagnostics(model, records, dataset, device):
             "observed_closed_frame_membership_fraction": float(frame_membership.float().mean()),
         },
         "windows": {
-            "lower": window_lower.detach().cpu().tolist(), "upper": window_upper.detach().cpu().tolist(),
+            "lower": window_lower.detach().cpu().tolist(),
+            "upper": window_upper.detach().cpu().tolist(),
             "count": model.window_count,
-            "contained_in_host_frame": ((window_lower >= lower.unsqueeze(2)) &
-                                         (window_upper <= upper.unsqueeze(2))).all(dim=-1).detach().cpu().tolist(),
+            "contained_in_host_frame": (
+                ((window_lower >= lower.unsqueeze(2)) & (window_upper <= upper.unsqueeze(2)))
+                .all(dim=-1).detach().cpu().tolist()
+            ),
             "actual_host_frame_volume_exclusion_fraction": volume_fraction.detach().cpu().tolist(),
             "observed_frame_point_exclusion_fraction": observed_fraction.detach().cpu().tolist(),
             "observed_window_interior_counts": window_observed_count.detach().cpu().tolist(),
-            "clearance_controlling_window_counts_with_ties": window_controls.detach().cpu().tolist(),
+            "clearance_controlling_window_counts_with_ties": (
+                window_controls.detach().cpu().tolist()
+            ),
             "points_with_multiple_controlling_windows": window_control_ties.detach().cpu().tolist(),
             "selected_house_counts": selected_house_count.detach().cpu().tolist(),
             "clearance_controlling_frame_counts": frame_control_counts.detach().cpu().tolist(),
             "town_house_tie_counts": town_house_tie_counts.detach().cpu().tolist(),
-            "observed_town_membership_exclusion_fraction": float((frame_membership & ~membership).float().mean()),
+            "observed_town_membership_exclusion_fraction": float(
+                (frame_membership & ~membership).float().mean()
+            ),
         },
         "membership_true_fraction": float(membership.float().mean()),
         "clearance_finite": bool(torch.isfinite(town_score).all()),
@@ -730,9 +801,16 @@ def train_town(
                 "validation_sample_ids": [item.sample_id for item in validation_records],
             },
         )
-        if (not train_records or isinstance(epochs, bool) or not isinstance(epochs, int) or epochs < 1
-                or isinstance(seed, bool) or not isinstance(seed, int)
-                or not math.isfinite(learning_rate) or learning_rate <= 0):
+        if (
+            not train_records
+            or isinstance(epochs, bool)
+            or not isinstance(epochs, int)
+            or epochs < 1
+            or isinstance(seed, bool)
+            or not isinstance(seed, int)
+            or not math.isfinite(learning_rate)
+            or learning_rate <= 0
+        ):
             raise ValueError("training requires records, positive epochs and finite learning rate")
         if objective not in ("logistic", "hinge"):
             raise ValueError("objective must be logistic or hinge")
@@ -742,7 +820,9 @@ def train_town(
             item.split != "validation" for item in validation_records
         ):
             raise ValueError("TOWN training accepts train and validation records only")
-        if {item.sample_id for item in train_records} & {item.sample_id for item in validation_records}:
+        if {item.sample_id for item in train_records} & {
+            item.sample_id for item in validation_records
+        }:
             raise ValueError("overlapping train and validation sample IDs")
         if any(item.split == "test" for item in (*train_records, *validation_records)):
             raise ValueError("sealed test records cannot be used for training or validation")
@@ -755,7 +835,9 @@ def train_town(
                 initial_box_checkpoint, dataset, domain=domain, houses=houses,
                 latent_dim=latent_dim, epsilon=epsilon, device=dev,
             )
-            config["initial_box_checkpoint_sha256"] = box_initialization["provenance"]["artifact_sha256"]
+            config["initial_box_checkpoint_sha256"] = (
+                box_initialization["provenance"]["artifact_sha256"]
+            )
         model = TownMultiLabelModel(
             len(PIZZA_FEATURE_NAMES), len(COMPONENT_FEATURE_NAMES), dataset.canonical_class_ids,
             dataset.class_manifest_sha256, latent_dim=latent_dim, houses=houses, windows=windows,
@@ -765,8 +847,12 @@ def train_town(
             initial_frame_bounds=None if box_initialization is None else (
                 box_initialization["frame_lower"], box_initialization["frame_upper"]
             ),
-            initial_adapter_state=None if box_initialization is None else box_initialization["adapter_state"],
-            initializer_source={} if box_initialization is None else box_initialization["provenance"],
+            initial_adapter_state=(
+                None if box_initialization is None else box_initialization["adapter_state"]
+            ),
+            initializer_source=(
+                {} if box_initialization is None else box_initialization["provenance"]
+            ),
         )
         config["initializer"] = model.initializer_identity
         if box_initialization is not None:
@@ -808,7 +894,9 @@ def train_town(
         best_micro_f1_epoch = None
         history = []
         accepted_updates = 0
-        initial_parameters = {key: value.detach().clone() for key, value in model.state_dict().items()}
+        initial_parameters = {
+            key: value.detach().clone() for key, value in model.state_dict().items()
+        }
         for epoch in range(epochs):
             order = list(train_records)
             random.shuffle(order)
@@ -880,7 +968,9 @@ def train_town(
                 movement_norms[group] = float(torch.sqrt(sum(
                     ((after - before) ** 2).sum() for before, after in matching
                 ))) if matching else 0.0
-                parameter_updates[group] = any(not torch.equal(before, after) for before, after in matching)
+                parameter_updates[group] = any(
+                    not torch.equal(before, after) for before, after in matching
+                )
             row = {
                 "epoch": epoch + 1,
                 "train_loss": None if train_loss is None else float(train_loss),
@@ -962,8 +1052,11 @@ def train_town(
             ).ru_maxrss,
         }
         _atomic_json(rec.path / "summary.json", result)
-        rec.update(status="completed", finished_at=__import__("datetime").datetime.now().astimezone().isoformat(),
-                   summary=result)
+        rec.update(
+            status="completed",
+            finished_at=__import__("datetime").datetime.now().astimezone().isoformat(),
+            summary=result,
+        )
         return result
     except KeyboardInterrupt as error:
         rec.interrupt(error)

@@ -274,7 +274,10 @@ def test_historical_box_trainer_checkpoint_is_loaded_and_validated(tmp_path):
         latent_dim=3, houses=1, windows=1, domain="unbounded",
         initial_box_checkpoint=checkpoint,
     )
-    assert integrated["training_config"]["historical_box_initialization"]["artifact_sha256"] == loaded["provenance"]["artifact_sha256"]
+    assert (
+        integrated["training_config"]["historical_box_initialization"]["artifact_sha256"]
+        == loaded["provenance"]["artifact_sha256"]
+    )
     with pytest.raises(ValueError, match="class|vocabulary|identity"):
         wrong = SimpleNamespace(**{**vars(dataset), "class_manifest_sha256": "wrong-vocab"})
         load_box_initialization(checkpoint, wrong, domain="unbounded", houses=1, latent_dim=3)
