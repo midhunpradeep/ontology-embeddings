@@ -117,11 +117,67 @@ class AttemptLedger:
     def records(self) -> list[dict[str, Any]]:
         if not self.path.exists():
             return []
-        result = []
-        for line in self.path.read_text(encoding="utf-8").splitlines():
-            record = json.loads(line)
-            if not isinstance(record, dict):
-                raise ValueError("invalid ledger record")
+        result: list[dict[str, Any]] = []
+        latest: dict[str, dict[str, Any]] = {}
+        run_ids: set[str] = set()
+        expected_keys = {"config_id", "config_sha256", "attempt_id", "attempt", "status",
+                         "run_id", "outcome_class", "evidence_references", "recovery_evidence"}
+        for line_number, line in enumerate(self.path.read_text(encoding="utf-8").splitlines(), 1):
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError as error:
+                raise ValueError(f"malformed ledger JSON on line {line_number}") from error
+            if not isinstance(record, dict) or set(record) != expected_keys:
+                raise ValueError(f"malformed ledger record on line {line_number}")
+            config_id = record["config_id"]
+            config = next((c for c in CONFIGURATIONS if c["config_id"] == config_id), None)
+            if config is None or record["config_sha256"] != _config_hash(config):
+                raise ValueError(f"unknown configuration or changed config hash on line {line_number}")
+            status, outcome = record["status"], record["outcome_class"]
+            attempt, run_id = record["attempt"], record["run_id"]
+            evidence, recovery = record["evidence_references"], record["recovery_evidence"]
+            if (status not in self.STATUSES or type(attempt) is not int or attempt < 1 or
+                    not isinstance(evidence, list) or not evidence or
+                    any(not isinstance(ref, str) or not ref for ref in evidence) or
+                    not isinstance(recovery, list) or
+                    any(not isinstance(ref, str) or not ref for ref in recovery)):
+                raise ValueError(f"invalid status, attempt, or evidence on line {line_number}")
+            if status in {"pending", "blocked"} and run_id is not None:
+                raise ValueError(f"pre-run status has RunRecord ID on line {line_number}")
+            if status in {"failed", "interrupted", "completed"} and (
+                    not isinstance(run_id, str) or not run_id.strip()):
+                raise ValueError(f"terminal status lacks RunRecord ID on line {line_number}")
+            if status == "pending" and outcome is not None:
+                raise ValueError(f"pending status has outcome on line {line_number}")
+            if recovery and status != "pending":
+                raise ValueError(f"recovery evidence is only valid on a fresh pending attempt on line {line_number}")
+            if status == "blocked" and outcome != "dependency_blocked":
+                raise ValueError(f"invalid blocked outcome on line {line_number}")
+            if status in {"failed", "interrupted"} and outcome not in self.FAILURE_CLASSES:
+                raise ValueError(f"invalid failure outcome on line {line_number}")
+            if status == "completed" and outcome not in {None, "scientific_negative"}:
+                raise ValueError(f"invalid completed outcome on line {line_number}")
+            if run_id is not None:
+                if run_id in run_ids:
+                    raise ValueError(f"duplicate RunRecord ID on line {line_number}")
+                run_ids.add(run_id)
+            previous = latest.get(config_id)
+            if previous is None:
+                valid = status in {"pending", "blocked"} and attempt == 1
+            elif status == "pending" and previous["status"] == "blocked":
+                valid = attempt == previous["attempt"] and not recovery
+            elif status == "pending" and previous["status"] == "failed" and previous["outcome_class"] == "external_operational":
+                valid = attempt == previous["attempt"] + 1 <= 2 and bool(recovery)
+            else:
+                valid = (previous["status"] == "pending" and
+                         status in {"blocked", "failed", "interrupted", "completed"} and
+                         attempt == previous["attempt"])
+                if previous["status"] == "blocked" and status == "blocked":
+                    valid = attempt == previous["attempt"]
+            expected_attempt_id = f"{config_id}-A{attempt:02d}"
+            if not valid or record["attempt_id"] != expected_attempt_id:
+                raise ValueError(f"illegal lifecycle or attempt identity on line {line_number}")
+            latest[config_id] = record
             result.append(record)
         return result
 
@@ -132,8 +188,15 @@ class AttemptLedger:
         config = next((c for c in CONFIGURATIONS if c["config_id"] == config_id), None)
         if config is None or status not in self.STATUSES:
             raise ValueError("unknown configuration ID or status")
-        if not evidence_references or any(not isinstance(x, str) or not x for x in evidence_references):
+        if (not isinstance(evidence_references, list) or not evidence_references or
+                any(not isinstance(x, str) or not x for x in evidence_references)):
             raise ValueError("status event requires evidence references")
+        if recovery_evidence is not None and (
+                not isinstance(recovery_evidence, list) or
+                any(not isinstance(x, str) or not x for x in recovery_evidence)):
+            raise ValueError("recovery evidence must be a list of nonempty references")
+        if recovery_evidence and status != "pending":
+            raise ValueError("recovery evidence is only valid on a fresh pending attempt")
         if run_id is not None and (not isinstance(run_id, str) or not run_id.strip()):
             raise ValueError("RunRecord ID must be nonempty or null")
         if status in {"pending", "blocked"} and run_id is not None:
@@ -161,6 +224,8 @@ class AttemptLedger:
             attempt = 1
         elif status == "pending":
             if last["status"] == "blocked":
+                if recovery_evidence:
+                    raise ValueError("dependency unblock does not accept retry evidence")
                 attempt = last["attempt"]
             elif last["status"] == "failed" and last.get("outcome_class") == "external_operational":
                 attempt = last["attempt"] + 1

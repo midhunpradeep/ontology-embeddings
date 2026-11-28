@@ -156,6 +156,47 @@ def test_scientific_negative_is_not_retried(tmp_path):
         ledger.append(config_id=config_id, status="pending", evidence_references=["retry://tuning"])
 
 
+@pytest.mark.parametrize("bad_record", [
+    {"config_id": "unrelated", "status": "impossible"},
+    {"config_id": CONFIGURATIONS[0]["config_id"], "status": "impossible"},
+    {"config_id": CONFIGURATIONS[0]["config_id"], "status": "pending", "run_id": "unexpected"},
+    {"config_id": CONFIGURATIONS[0]["config_id"], "status": "failed", "run_id": None},
+])
+def test_malformed_persisted_history_fails_closed_without_appending(tmp_path, bad_record):
+    path = tmp_path / "attempts.jsonl"
+    original = json.dumps(bad_record) + "\n"
+    path.write_text(original)
+    ledger = AttemptLedger(path)
+    with pytest.raises(ValueError):
+        ledger.append(config_id=CONFIGURATIONS[0]["config_id"], status="pending",
+                      evidence_references=["qualification://ready"])
+    assert path.read_text() == original
+
+
+def test_unknown_fields_and_bad_attempt_sequence_fail_closed(tmp_path):
+    path = tmp_path / "attempts.jsonl"
+    ledger = AttemptLedger(path)
+    config_id = CONFIGURATIONS[0]["config_id"]
+    ledger.append(config_id=config_id, status="pending", evidence_references=["qualification://ready"])
+    valid = ledger.records()[0]
+    valid["unexpected"] = "field"
+    path.write_text(json.dumps(valid) + "\n")
+    original = path.read_text()
+    with pytest.raises(ValueError, match="malformed"):
+        ledger.append(config_id=config_id, status="blocked", outcome_class="dependency_blocked",
+                      evidence_references=["dependency://blocked"])
+    assert path.read_text() == original
+
+    del valid["unexpected"]
+    valid["attempt_id"] = f"{config_id}-A02"
+    path.write_text(json.dumps(valid) + "\n")
+    original = path.read_text()
+    with pytest.raises(ValueError, match="attempt identity"):
+        ledger.append(config_id=config_id, status="blocked", outcome_class="dependency_blocked",
+                      evidence_references=["dependency://blocked"])
+    assert path.read_text() == original
+
+
 def test_invalid_attempt_data_rejected(tmp_path):
     ledger = AttemptLedger(tmp_path / "attempts.jsonl")
     with pytest.raises(ValueError):
