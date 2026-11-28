@@ -1,0 +1,41 @@
+{
+  "schema": "town-final-checkpoint-metadata-correction-v1",
+  "status": "reconciled_without_rewriting_originals",
+  "experimental_source_revision": "3714b8f1e7e1aa94ab252734c6a73b251973077f",
+  "correction_source_revision": "aff5e888b7206af5be45ac14a26254af5ad26487",
+  "field": "checkpoint.validation_loss",
+  "authoritative_source": "runs/<run_id>/metrics.jsonl, final epoch record (line 60; 1-based)",
+  "runs": [
+    {
+      "domain": "unbounded",
+      "run_id": "20261127T142303-452045129f33",
+      "original_artifact": "runs/20261127T142303-452045129f33/checkpoints/final.pt",
+      "original_artifact_sha256": "dc476ecd9c59fc8fc37041093c7889af0034d795184a8de3bfb2693ee1a89c48",
+      "original_epoch": 60,
+      "original_metadata_value": 0.012100125662982464,
+      "correct_value": 0.012150946073234081,
+      "history_artifact": "runs/20261127T142303-452045129f33/metrics.jsonl",
+      "history_sha256": "23853d41f2ea02c6ad5329f1693d9aee8c73a7aae223fbb2424d65ad4d018d8f",
+      "final_history_record_sha256": "7db6da56be9bbfd7fbe880ca659b47443eefbdc902314fb6f299a4b1a5aab3ea",
+      "summary_sha256": "5adc6eaa71442f7166ff98efa2d61fab53d00e9eaf0ac542fb4b416f2de15c35",
+      "selected_best_checkpoint_sha256": "686b82237752dd993433f2a31d09e4622f3bdc12a439f1d046638f147fc7c8cf"
+    },
+    {
+      "domain": "bounded",
+      "run_id": "20261127T142545-2e2b89819b9f",
+      "original_artifact": "runs/20261127T142545-2e2b89819b9f/checkpoints/final.pt",
+      "original_artifact_sha256": "6e589eeebc691476b18657f98c70b5c2ec7c00907061002ec64d5070a71e06af",
+      "original_epoch": 60,
+      "original_metadata_value": 0.05192398652434349,
+      "correct_value": 0.05312584340572357,
+      "history_artifact": "runs/20261127T142545-2e2b89819b9f/metrics.jsonl",
+      "history_sha256": "5c2533fe3bec82e53568e3b4fd3c6c340ab31acdd66b112e4ae594a31df8ed6e",
+      "final_history_record_sha256": "9acb714c6d886cfb17f5bee6e6f7239fea655c6c4d9e4465825d3f0850eb8d50",
+      "summary_sha256": "e3409c389c29807deb48ca81c63ca51332fcd2ea4113e2d9d85dfc70a1050dec",
+      "selected_best_checkpoint_sha256": "13793839d8f4361cc4d11cb4ca0f470b8f5b9037d86ed4de341d5fd1f8417849"
+    }
+  ],
+  "derivative_checkpoint": null,
+  "original_checkpoint_bytes_changed": false,
+  "scientific_scope": "Metadata only. The final.pt validation_loss incorrectly copied the best-epoch loss instead of the native loss at epoch 60. The producer now records the final epoch loss while retaining null when validation is absent. Best-checkpoint selection and metadata, model parameters, geometry, optimization, evaluation, configuration, selected metrics, and experimental conclusions are unchanged. No model was retrained. The original checkpoints remain byte-identical; the authoritative history record and this correction record reconcile their metadata."
+}
