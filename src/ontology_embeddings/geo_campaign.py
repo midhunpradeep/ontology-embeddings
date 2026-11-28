@@ -111,8 +111,29 @@ class AttemptLedger:
     STATUSES = {"pending", "blocked", "failed", "interrupted", "completed"}
     FAILURE_CLASSES = {"external_operational", "numerical_failure", "implementation_correctness"}
 
-    def __init__(self, path: str | Path):
+    def __init__(self, path: str | Path, *, run_store_root: str | Path | None = None):
         self.path = Path(path)
+        self.run_store_root = Path(run_store_root).expanduser().resolve() if run_store_root is not None else None
+
+    def _validate_run_record(self, record: dict[str, Any]) -> None:
+        run_id = record["run_id"]
+        if self.run_store_root is None:
+            raise ValueError("terminal attempt validation requires an explicit RunRecord store root")
+        manifest_path = self.run_store_root / run_id / "manifest.json"
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise ValueError(f"RunRecord manifest missing or invalid for {run_id}") from error
+        config = next(c for c in CONFIGURATIONS if c["config_id"] == record["config_id"])
+        expected_identity = {
+            "config_id": record["config_id"],
+            "config_sha256": _config_hash(config),
+            "attempt_id": record["attempt_id"],
+        }
+        if (not isinstance(manifest, dict) or manifest.get("run_id") != run_id or
+                manifest.get("status") != record["status"] or
+                manifest.get("geo_campaign") != expected_identity):
+            raise ValueError(f"RunRecord identity/status mismatch for {run_id}")
 
     def records(self) -> list[dict[str, Any]]:
         if not self.path.exists():
@@ -161,6 +182,7 @@ class AttemptLedger:
                 if run_id in run_ids:
                     raise ValueError(f"duplicate RunRecord ID on line {line_number}")
                 run_ids.add(run_id)
+                self._validate_run_record(record)
             previous = latest.get(config_id)
             if previous is None:
                 valid = status in {"pending", "blocked"} and attempt == 1
@@ -247,6 +269,8 @@ class AttemptLedger:
                   "run_id": run_id, "outcome_class": outcome_class,
                   "evidence_references": evidence_references,
                   "recovery_evidence": recovery_evidence or []}
+        if run_id is not None:
+            self._validate_run_record(record)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(record, sort_keys=True) + "\n")

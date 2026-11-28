@@ -12,6 +12,18 @@ from ontology_embeddings.geo_campaign import (
     validate_manifest,
     validate_ordered_selections,
 )
+from ontology_embeddings.run_store import RunRecord
+
+
+def _persist_run(root, config_id, attempt_id, status):
+    record = RunRecord(root, purpose="GEO-03 test", invocation="test", config={})
+    config = next(c for c in CONFIGURATIONS if c["config_id"] == config_id)
+    record.update(status=status, geo_campaign={
+        "config_id": config_id,
+        "config_sha256": campaign._config_hash(config),
+        "attempt_id": attempt_id,
+    })
+    return record.run_id
 
 
 def test_frozen_matrix_count_order_settings_and_pairing():
@@ -83,31 +95,36 @@ def test_pending_to_dependency_blocked_without_run_id(tmp_path):
 
 
 def test_external_operational_failure_allows_one_fresh_attempt(tmp_path):
-    ledger = AttemptLedger(tmp_path / "attempts.jsonl")
+    run_root = tmp_path / "runs"
+    ledger = AttemptLedger(tmp_path / "attempts.jsonl", run_store_root=run_root)
     config_id = CONFIGURATIONS[0]["config_id"]
     ledger.append(config_id=config_id, status="pending", evidence_references=["qualification://ready"])
-    ledger.append(config_id=config_id, status="failed", run_id="run-1", outcome_class="external_operational",
+    run1 = _persist_run(run_root, config_id, f"{config_id}-A01", "failed")
+    ledger.append(config_id=config_id, status="failed", run_id=run1, outcome_class="external_operational",
                   evidence_references=["log://failure"])
     with pytest.raises(ValueError, match="correction evidence"):
         ledger.append(config_id=config_id, status="pending", evidence_references=["retry://intent"])
     ledger.append(config_id=config_id, status="pending", evidence_references=["retry://intent"],
                   recovery_evidence=["review://cause-corrected"])
-    ledger.append(config_id=config_id, status="completed", run_id="run-2",
+    run2 = _persist_run(run_root, config_id, f"{config_id}-A02", "completed")
+    ledger.append(config_id=config_id, status="completed", run_id=run2,
                   evidence_references=["run://evidence"], outcome_class="scientific_negative")
     rows = ledger.records()
     assert [r["attempt_id"] for r in rows] == [f"{config_id}-A01"] * 2 + [f"{config_id}-A02"] * 2
-    assert [r["run_id"] for r in rows] == [None, "run-1", None, "run-2"]
+    assert [r["run_id"] for r in rows] == [None, run1, None, run2]
     with pytest.raises(ValueError, match="not retryable"):
         ledger.append(config_id=config_id, status="pending", evidence_references=["retry://third"])
 
 
 def test_dependency_unblock_and_pre_run_validation(tmp_path):
-    ledger = AttemptLedger(tmp_path / "attempts.jsonl")
+    run_root = tmp_path / "runs"
+    ledger = AttemptLedger(tmp_path / "attempts.jsonl", run_store_root=run_root)
     config_id = CONFIGURATIONS[1]["config_id"]
     ledger.append(config_id=config_id, status="blocked", outcome_class="dependency_blocked",
                   evidence_references=["dependency://blocked"])
     ledger.append(config_id=config_id, status="pending", evidence_references=["dependency://resolved"])
-    ledger.append(config_id=config_id, status="completed", run_id="run-valid",
+    run_id = _persist_run(run_root, config_id, f"{config_id}-A01", "completed")
+    ledger.append(config_id=config_id, status="completed", run_id=run_id,
                   evidence_references=["run://valid"])
     assert [r["status"] for r in ledger.records()] == ["blocked", "pending", "completed"]
     other = AttemptLedger(tmp_path / "invalid.jsonl")
@@ -118,11 +135,13 @@ def test_dependency_unblock_and_pre_run_validation(tmp_path):
 
 
 def test_numerical_and_implementation_failures_never_retry(tmp_path):
+    run_root = tmp_path / "runs"
     for i, kind in enumerate(("numerical_failure", "implementation_correctness")):
-        ledger = AttemptLedger(tmp_path / f"failure-{i}.jsonl")
+        ledger = AttemptLedger(tmp_path / f"failure-{i}.jsonl", run_store_root=run_root)
         config_id = CONFIGURATIONS[i]["config_id"]
         ledger.append(config_id=config_id, status="pending", evidence_references=["qualification://ready"])
-        ledger.append(config_id=config_id, status="failed", run_id=f"run-{i}", outcome_class=kind,
+        run_id = _persist_run(run_root, config_id, f"{config_id}-A01", "failed")
+        ledger.append(config_id=config_id, status="failed", run_id=run_id, outcome_class=kind,
                       evidence_references=["run://failure"])
         with pytest.raises(ValueError, match="not retryable"):
             ledger.append(config_id=config_id, status="pending", evidence_references=["retry://forbidden"],
@@ -130,14 +149,17 @@ def test_numerical_and_implementation_failures_never_retry(tmp_path):
 
 
 def test_second_external_retry_is_rejected_and_history_is_append_only(tmp_path):
-    ledger = AttemptLedger(tmp_path / "attempts.jsonl")
+    run_root = tmp_path / "runs"
+    ledger = AttemptLedger(tmp_path / "attempts.jsonl", run_store_root=run_root)
     config_id = CONFIGURATIONS[2]["config_id"]
     ledger.append(config_id=config_id, status="pending", evidence_references=["qualification://ready"])
-    ledger.append(config_id=config_id, status="failed", run_id="r1", outcome_class="external_operational",
+    run1 = _persist_run(run_root, config_id, f"{config_id}-A01", "failed")
+    ledger.append(config_id=config_id, status="failed", run_id=run1, outcome_class="external_operational",
                   evidence_references=["run://one"])
     ledger.append(config_id=config_id, status="pending", evidence_references=["retry://one"],
                   recovery_evidence=["review://corrected"])
-    ledger.append(config_id=config_id, status="failed", run_id="r2", outcome_class="external_operational",
+    run2 = _persist_run(run_root, config_id, f"{config_id}-A02", "failed")
+    ledger.append(config_id=config_id, status="failed", run_id=run2, outcome_class="external_operational",
                   evidence_references=["run://two"])
     before = (tmp_path / "attempts.jsonl").read_text()
     with pytest.raises(ValueError, match="limited to one"):
@@ -147,10 +169,12 @@ def test_second_external_retry_is_rejected_and_history_is_append_only(tmp_path):
 
 
 def test_scientific_negative_is_not_retried(tmp_path):
-    ledger = AttemptLedger(tmp_path / "attempts.jsonl")
+    run_root = tmp_path / "runs"
+    ledger = AttemptLedger(tmp_path / "attempts.jsonl", run_store_root=run_root)
     config_id = CONFIGURATIONS[3]["config_id"]
     ledger.append(config_id=config_id, status="pending", evidence_references=["qualification://ready"])
-    ledger.append(config_id=config_id, status="completed", run_id="scientific-run",
+    run_id = _persist_run(run_root, config_id, f"{config_id}-A01", "completed")
+    ledger.append(config_id=config_id, status="completed", run_id=run_id,
                   outcome_class="scientific_negative", evidence_references=["metrics://valid-negative"])
     with pytest.raises(ValueError, match="not retryable"):
         ledger.append(config_id=config_id, status="pending", evidence_references=["retry://tuning"])
@@ -195,6 +219,40 @@ def test_unknown_fields_and_bad_attempt_sequence_fail_closed(tmp_path):
         ledger.append(config_id=config_id, status="blocked", outcome_class="dependency_blocked",
                       evidence_references=["dependency://blocked"])
     assert path.read_text() == original
+
+
+@pytest.mark.parametrize("corruption", ["missing_manifest", "index_only", "run_id", "config_hash", "attempt_id", "status"])
+def test_terminal_events_require_matching_persisted_runrecord(tmp_path, corruption):
+    run_root = tmp_path / "runs"
+    path = tmp_path / "attempts.jsonl"
+    ledger = AttemptLedger(path, run_store_root=run_root)
+    config_id = CONFIGURATIONS[0]["config_id"]
+    attempt_id = f"{config_id}-A01"
+    ledger.append(config_id=config_id, status="pending", evidence_references=["qualification://ready"])
+    if corruption == "missing_manifest":
+        run_id = "missing-run"
+    elif corruption == "index_only":
+        run_root.mkdir(parents=True)
+        run_id = "index-only-run"
+        (run_root / "index.jsonl").write_text(json.dumps({"run_id": run_id}) + "\\n")
+    else:
+        run_id = _persist_run(run_root, config_id, attempt_id, "failed")
+        manifest_path = run_root / run_id / "manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        if corruption == "run_id":
+            manifest["run_id"] = "different-run"
+        elif corruption == "config_hash":
+            manifest["geo_campaign"]["config_sha256"] = "0" * 64
+        elif corruption == "attempt_id":
+            manifest["geo_campaign"]["attempt_id"] = f"{config_id}-A02"
+        elif corruption == "status":
+            manifest["status"] = "completed"
+        manifest_path.write_text(json.dumps(manifest))
+    original = path.read_bytes()
+    with pytest.raises(ValueError):
+        ledger.append(config_id=config_id, status="failed", run_id=run_id,
+                      outcome_class="external_operational", evidence_references=["run://evidence"])
+    assert path.read_bytes() == original
 
 
 def test_invalid_attempt_data_rejected(tmp_path):
