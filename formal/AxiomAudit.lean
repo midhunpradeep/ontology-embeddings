@@ -1,0 +1,13 @@
+import OntologyEmbeddings.Semantics
+
+#print axioms OntologyEmbeddings.Semantics.subsumes_refl
+#print axioms OntologyEmbeddings.Semantics.subsumes_trans
+#print axioms OntologyEmbeddings.Semantics.equivalent_iff_mutually_subsumes
+#print axioms OntologyEmbeddings.Semantics.disjoint_symm
+#print axioms OntologyEmbeddings.Semantics.disjoint_iff_conjunction_equivalent_bottom
+#print axioms OntologyEmbeddings.Semantics.complement_member_iff_not_member
+#print axioms OntologyEmbeddings.Semantics.concept_excluded_middle
+#print axioms OntologyEmbeddings.Semantics.concept_noncontradiction
+#print axioms OntologyEmbeddings.Semantics.example_positive_membership
+#print axioms OntologyEmbeddings.Semantics.example_negative_membership
+#print axioms OntologyEmbeddings.Semantics.example_unlabeled_point_can_be_a_member
