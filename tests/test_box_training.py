@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import copy
+import json
 from dataclasses import replace
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -845,3 +847,138 @@ def test_invalid_optimizer_update_fails_closed_and_preserves_latest(tmp_path, mo
     checkpoint = run_dirs[0] / "checkpoints" / "latest.pt"
     payload = torch.load(checkpoint, weights_only=True)
     assert all(torch.isfinite(value).all() for value in payload["model_state"].values())
+
+
+def test_temporal_capture_preserves_box_updates_and_optimizer_trajectory(tmp_path, monkeypatch):
+    import ontology_embeddings.box_training as box_training
+    from ontology_embeddings.geo_capture import state_dict_sha256, verify_temporal_capture
+
+    train = [_record(f"train-{index}", "train", bool(index % 2)) for index in range(4)]
+    validation = [
+        _record(f"validation-{index}", "validation", bool(index % 2)) for index in range(2)
+    ]
+    captured_optimizer_states = []
+    original_update = box_training.checked_optimizer_update
+
+    def record_optimizer_state(*args, **kwargs):
+        result = original_update(*args, **kwargs)
+        captured_optimizer_states.append(copy.deepcopy(args[1].state_dict()))
+        return result
+
+    monkeypatch.setattr(box_training, "checked_optimizer_update", record_optimizer_state)
+    without_capture = train_box(
+        _dataset(),
+        train,
+        validation,
+        artifact_root=tmp_path / "without-capture",
+        purpose="parity-fixture",
+        seed=23,
+        epochs=2,
+        batch_size=2,
+        latent_dim=2,
+        domain="unbounded",
+    )
+    without_states = captured_optimizer_states[:]
+    captured_optimizer_states.clear()
+    with_capture = train_box(
+        _dataset(),
+        train,
+        validation,
+        artifact_root=tmp_path / "with-capture",
+        purpose="parity-fixture",
+        seed=23,
+        epochs=2,
+        batch_size=2,
+        latent_dim=2,
+        domain="unbounded",
+        capture_temporal=True,
+    )
+    with_states = captured_optimizer_states[:]
+
+    def nested_equal(left, right):
+        if isinstance(left, torch.Tensor):
+            return isinstance(right, torch.Tensor) and torch.equal(left, right)
+        if isinstance(left, dict):
+            return (
+                isinstance(right, dict)
+                and left.keys() == right.keys()
+                and all(nested_equal(left[key], right[key]) for key in left)
+            )
+        if isinstance(left, list):
+            return (
+                isinstance(right, list)
+                and len(left) == len(right)
+                and all(nested_equal(a, b) for a, b in zip(left, right, strict=True))
+            )
+        return left == right
+
+    assert without_capture["history"] == with_capture["history"]
+    assert without_capture["parameter_updates"] == with_capture["parameter_updates"]
+    assert len(without_states) == len(with_states) == 4
+    assert all(
+        nested_equal(left, right) for left, right in zip(without_states, with_states, strict=True)
+    )
+    without_latest = torch.load(without_capture["checkpoint_paths"]["latest"], weights_only=True)
+    with_latest = torch.load(with_capture["checkpoint_paths"]["latest"], weights_only=True)
+    assert all(
+        torch.equal(without_latest["model_state"][key], with_latest["model_state"][key])
+        for key in without_latest["model_state"]
+    )
+
+    run_path = Path(with_capture["run_path"])
+    verification = verify_temporal_capture(
+        run_path, expected_run_id=with_capture["run_id"], expected_epochs=2, batches_per_epoch=2
+    )
+    assert [item["accepted_updates"] for item in verification["snapshots"]] == [0, 1, 2, 4]
+    assert verification["snapshots"][2]["epoch_boundary"] is True
+    for item in verification["snapshots"]:
+        checkpoint = torch.load(run_path / item["checkpoint_path"], weights_only=True)
+        assert state_dict_sha256(checkpoint["model_state"]) == item["model_state_sha256"]
+
+
+def test_temporal_index_publication_failure_fails_run_and_leaves_detectable_orphan(
+    tmp_path, monkeypatch
+):
+    import ontology_embeddings.geo_capture as geo_capture
+    from ontology_embeddings.geo_capture import verify_temporal_capture
+
+    original_atomic_json = geo_capture._atomic_json
+    index_publications = 0
+
+    def fail_initial_index_record(path, value):
+        nonlocal index_publications
+        if Path(path).name == "index.json":
+            index_publications += 1
+            if index_publications == 2:
+                raise OSError("temporal index publication failed")
+        return original_atomic_json(path, value)
+
+    monkeypatch.setattr(geo_capture, "_atomic_json", fail_initial_index_record)
+    with pytest.raises(OSError, match="temporal index publication failed"):
+        train_box(
+            _dataset(),
+            [_record("accepted", "train", True)],
+            artifact_root=tmp_path,
+            purpose="capture-failure",
+            epochs=1,
+            batch_size=1,
+            latent_dim=2,
+            domain="unbounded",
+            capture_temporal=True,
+        )
+
+    run_dirs = [path for path in tmp_path.iterdir() if (path / "manifest.json").is_file()]
+    assert len(run_dirs) == 1
+    manifest = json.loads((run_dirs[0] / "manifest.json").read_text())
+    index = json.loads((run_dirs[0] / "temporal" / "index.json").read_text())
+    assert manifest["status"] == "failed"
+    assert index["snapshots"] == []
+    assert len(list((run_dirs[0] / "temporal" / "snapshots").glob("*.pt"))) == 1
+    with pytest.raises(ValueError, match="unindexed"):
+        verify_temporal_capture(
+            run_dirs[0],
+            expected_run_id=manifest["run_id"],
+            expected_epochs=1,
+            batches_per_epoch=1,
+            require_complete=False,
+        )

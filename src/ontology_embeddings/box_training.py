@@ -19,6 +19,7 @@ from .features import (
     FEATURE_SCHEMA,
     PIZZA_FEATURE_NAMES,
 )
+from .geo_capture import CAPTURE_SCHEMA_VERSION, TemporalCapture, state_dict_sha256
 from .run_store import RunRecord, _atomic_json
 from .shared_training import (
     checked_optimizer_update,
@@ -634,6 +635,8 @@ def train_box(
     shared_adapter_initial_state: dict[str, torch.Tensor] | None = None,
     initial_box_bounds: tuple[torch.Tensor, torch.Tensor] | None = None,
     initial_box_class_ids: Sequence[int] | None = None,
+    paired_initialization_provenance: dict[str, Any] | None = None,
+    capture_temporal: bool = False,
 ):
     """Train BOX metadata model, persisting only validated states and recording all outcomes."""
     config = {
@@ -658,6 +661,11 @@ def train_box(
         "amsgrad": False,
         "seed": seed,
     }
+    if capture_temporal:
+        config["temporal_capture"] = {
+            "schema_version": CAPTURE_SCHEMA_VERSION,
+            "policy": "initial+every-first-epoch-update+later-epoch-boundaries-v1",
+        }
     rec = run_record or RunRecord(
         artifact_root,
         purpose=purpose,
@@ -727,7 +735,15 @@ def train_box(
             fixed_positive_class_ids=getattr(dataset, "fixed_positive_class_ids", ()),
             device=dev,
         ).to(dev)
+        if not isinstance(capture_temporal, bool):
+            raise ValueError("capture_temporal must be a boolean")
+        if paired_initialization_provenance is not None and not isinstance(
+            paired_initialization_provenance, dict
+        ):
+            raise ValueError("paired initialization provenance must be a mapping")
         initial_identity = {"adapter_sha256": {}, "box_bounds": None}
+        if paired_initialization_provenance is not None:
+            initial_identity["provenance"] = paired_initialization_provenance
         if shared_adapter_initial_state is not None:
             expected = {
                 "pizza_adapter.weight": model.pizza_adapter.weight,
@@ -828,8 +844,8 @@ def train_box(
             amsgrad=False,
         )
         chunk = len(train_records) if batch_size is None else batch_size
-        if chunk < 1:
-            raise ValueError("batch_size must be positive")
+        if isinstance(chunk, bool) or not isinstance(chunk, int) or chunk < 1:
+            raise ValueError("batch_size must be a positive integer")
         config["batch_size"] = chunk
         rec.update(config=config)
         checkpoints = rec.path / "checkpoints"
@@ -848,6 +864,20 @@ def train_box(
 
         save("initial", 0)
         save("latest", 0)
+        temporal_capture = None
+        batches_per_epoch = math.ceil(len(train_records) / chunk)
+        if capture_temporal:
+            temporal_capture = TemporalCapture(
+                rec.path, rec.run_id, epochs=epochs, batches_per_epoch=batches_per_epoch
+            )
+            temporal_capture.capture(
+                checkpoints / "initial.pt",
+                accepted_updates=0,
+                epoch=0,
+                batch=0,
+                epoch_boundary=False,
+                model_state_sha256=state_dict_sha256(model.state_dict()),
+            )
         if validation_records:
             with torch.no_grad():
                 initial_validation_loss, _, _ = _box_loss(
@@ -927,6 +957,17 @@ def train_box(
                 geometry_post_norms.append(stats["group_post_clip_norms"]["geometry"])
                 save("latest", epoch + 1)
                 accepted_updates += 1
+                batch_number = start // chunk + 1
+                last_batch = start + chunk >= len(order)
+                if temporal_capture is not None and (epoch == 0 or last_batch):
+                    temporal_capture.capture(
+                        checkpoints / "latest.pt",
+                        accepted_updates=accepted_updates,
+                        epoch=epoch + 1,
+                        batch=batch_number,
+                        epoch_boundary=last_batch,
+                        model_state_sha256=state_dict_sha256(model.state_dict()),
+                    )
             with torch.no_grad():
                 train_loss, train_tasks, train_batch = _box_loss(
                     model,
@@ -1025,6 +1066,7 @@ def train_box(
                 best_geometry_snapshot = physical_snapshot()
                 save("best", epoch + 1, best)
             rec.update(last_epoch=epoch + 1, latest_metrics=row)
+        temporal_capture_summary = None if temporal_capture is None else temporal_capture.finalize()
         final_geometry_snapshot = physical_snapshot()
         if validation_records and (checkpoints / "best.pt").exists():
             model.load_checkpoint(
@@ -1078,6 +1120,8 @@ def train_box(
                 if (checkpoints / f"{x}.pt").exists()
             },
         }
+        if temporal_capture_summary is not None:
+            result["temporal_capture"] = temporal_capture_summary
         _atomic_json(rec.path / "summary.json", result)
         rec.update(
             status="completed",
